@@ -1,0 +1,1 @@
+# YouTube MCP Server for video metadata, transcripts, and analysis.

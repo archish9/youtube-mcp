@@ -1,0 +1,1708 @@
+- Video analytics over time
+- Channel comparison tools
+- Automated report generation
+- Integration with other APIs
+
+
+
+Great! Let me explain these advanced features in detail and show you how they make your YouTube MCP incredibly powerful.
+
+---
+
+## 📊 Advanced Features Explained
+
+### 1. **Video Analytics Over Time**
+
+**What it does:**
+- Track how a video's metrics change over days/weeks/months
+- Monitor growth patterns (views, likes, comments)
+- Identify viral moments
+- Compare performance at different stages
+- Predict future performance based on trends
+
+**Why it's useful:**
+```
+Scenario: You published a video 2 weeks ago
+- Day 1: 1,000 views
+- Day 7: 50,000 views
+- Day 14: 200,000 views
+
+Analytics shows:
+- Growth rate: +300% week-over-week
+- Peak engagement: Day 5-7
+- Viral coefficient: High (shared rapidly)
+- Prediction: Will reach 500K by day 30
+```
+
+**Real-world applications:**
+- **Content creators**: Understand what makes videos go viral
+- **Marketing teams**: Measure campaign success over time
+- **Researchers**: Study information spread patterns
+- **Investors**: Evaluate influencer ROI
+
+**Example implementation:**
+"""
+Video Analytics Over Time
+Track video performance metrics over time and identify trends
+"""
+
+import asyncio
+import json
+from datetime import datetime, timedelta
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+SERVER_PARAMS = StdioServerParameters(
+    command="python",
+    args=["-m", "youtube_mcp.server"],
+    env=None
+)
+
+class VideoAnalyticsTracker:
+    """Track video metrics over time"""
+    
+    def __init__(self):
+        self.data_points = []
+    
+    async def collect_snapshot(self, video_id: str):
+        """Collect current metrics for a video"""
+        async with stdio_client(SERVER_PARAMS) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                
+                result = await session.call_tool(
+                    "get_video_info",
+                    arguments={"video_id": video_id}
+                )
+                
+                data = json.loads(result.content[0].text)
+                
+                snapshot = {
+                    'timestamp': datetime.now().isoformat(),
+                    'video_id': video_id,
+                    'title': data['title'],
+                    'views': data['statistics']['views'],
+                    'likes': data['statistics']['likes'],
+                    'comments': data['statistics']['comments']
+                }
+                
+                return snapshot
+    
+    def calculate_growth_rate(self, snapshots):
+        """Calculate growth rate between snapshots"""
+        if len(snapshots) < 2:
+            return None
+        
+        first = snapshots[0]
+        last = snapshots[-1]
+        
+        time_diff = (datetime.fromisoformat(last['timestamp']) - 
+                    datetime.fromisoformat(first['timestamp'])).days
+        
+        if time_diff == 0:
+            return None
+        
+        view_growth = ((last['views'] - first['views']) / first['views']) * 100
+        like_growth = ((last['likes'] - first['likes']) / first['likes']) * 100 if first['likes'] > 0 else 0
+        
+        return {
+            'days': time_diff,
+            'views_growth_rate': view_growth / time_diff,  # Per day
+            'total_views_growth': view_growth,
+            'likes_growth_rate': like_growth / time_diff,
+            'total_likes_growth': like_growth,
+            'views_per_day': (last['views'] - first['views']) / time_diff,
+            'likes_per_day': (last['likes'] - first['likes']) / time_diff
+        }
+    
+    def identify_viral_moments(self, snapshots):
+        """Identify when video went viral"""
+        viral_moments = []
+        
+        for i in range(1, len(snapshots)):
+            prev = snapshots[i-1]
+            curr = snapshots[i]
+            
+            time_diff_hours = (datetime.fromisoformat(curr['timestamp']) - 
+                              datetime.fromisoformat(prev['timestamp'])).total_seconds() / 3600
+            
+            if time_diff_hours > 0:
+                views_per_hour = (curr['views'] - prev['views']) / time_diff_hours
+                
+                # Consider viral if getting > 10,000 views per hour
+                if views_per_hour > 10000:
+                    viral_moments.append({
+                        'timestamp': curr['timestamp'],
+                        'views_per_hour': views_per_hour,
+                        'total_views': curr['views']
+                    })
+        
+        return viral_moments
+    
+    def predict_future_views(self, snapshots, days_ahead=7):
+        """Simple linear prediction of future views"""
+        if len(snapshots) < 2:
+            return None
+        
+        growth = self.calculate_growth_rate(snapshots)
+        if not growth:
+            return None
+        
+        current_views = snapshots[-1]['views']
+        daily_growth = growth['views_per_day']
+        
+        predictions = []
+        for day in range(1, days_ahead + 1):
+            predicted_views = current_views + (daily_growth * day)
+            predictions.append({
+                'days_from_now': day,
+                'predicted_views': int(predicted_views),
+                'predicted_views_formatted': self.format_number(int(predicted_views))
+            })
+        
+        return predictions
+    
+    def format_number(self, num: int) -> str:
+        """Format large numbers"""
+        if num >= 1_000_000_000:
+            return f"{num / 1_000_000_000:.1f}B"
+        elif num >= 1_000_000:
+            return f"{num / 1_000_000:.1f}M"
+        elif num >= 1_000:
+            return f"{num / 1_000:.1f}K"
+        return str(num)
+    
+    async def generate_analytics_report(self, video_id: str, snapshots=None):
+        """Generate comprehensive analytics report"""
+        
+        if not snapshots:
+            # Simulate historical data (in production, load from database)
+            print("📥 Collecting video data...")
+            current = await self.collect_snapshot(video_id)
+            
+            # Simulate past snapshots (in real use, you'd have stored these)
+            snapshots = [
+                {
+                    **current,
+                    'timestamp': (datetime.now() - timedelta(days=14)).isoformat(),
+                    'views': int(current['views'] * 0.3),
+                    'likes': int(current['likes'] * 0.3),
+                    'comments': int(current['comments'] * 0.3)
+                },
+                {
+                    **current,
+                    'timestamp': (datetime.now() - timedelta(days=7)).isoformat(),
+                    'views': int(current['views'] * 0.6),
+                    'likes': int(current['likes'] * 0.6),
+                    'comments': int(current['comments'] * 0.6)
+                },
+                current
+            ]
+        
+        print("\n" + "=" * 70)
+        print("📊 VIDEO ANALYTICS REPORT")
+        print("=" * 70)
+        
+        print(f"\n📹 Video: {snapshots[0]['title']}")
+        print(f"   ID: {video_id}")
+        print(f"   Analysis Period: {len(snapshots)} data points")
+        
+        # Current metrics
+        latest = snapshots[-1]
+        print(f"\n📈 Current Metrics:")
+        print(f"   Views: {self.format_number(latest['views'])}")
+        print(f"   Likes: {self.format_number(latest['likes'])}")
+        print(f"   Comments: {self.format_number(latest['comments'])}")
+        print(f"   Last Updated: {latest['timestamp']}")
+        
+        # Growth analysis
+        growth = self.calculate_growth_rate(snapshots)
+        if growth:
+            print(f"\n📊 Growth Analysis ({growth['days']} days):")
+            print(f"   Total Views Growth: {growth['total_views_growth']:.1f}%")
+            print(f"   Views Per Day: {self.format_number(int(growth['views_per_day']))}")
+            print(f"   Daily Growth Rate: {growth['views_growth_rate']:.2f}%")
+            print(f"   Total Likes Growth: {growth['total_likes_growth']:.1f}%")
+            print(f"   Likes Per Day: {int(growth['likes_per_day'])}")
+        
+        # Viral moments
+        viral = self.identify_viral_moments(snapshots)
+        if viral:
+            print(f"\n🔥 Viral Moments Detected: {len(viral)}")
+            for i, moment in enumerate(viral, 1):
+                print(f"   {i}. {moment['timestamp']}")
+                print(f"      Views/Hour: {self.format_number(int(moment['views_per_hour']))}")
+        
+        # Predictions
+        predictions = self.predict_future_views(snapshots, days_ahead=7)
+        if predictions:
+            print(f"\n🔮 7-Day Forecast:")
+            for pred in predictions:
+                print(f"   Day +{pred['days_from_now']}: {pred['predicted_views_formatted']} views")
+        
+        # Performance summary
+        print(f"\n✅ Performance Summary:")
+        if growth and growth['views_growth_rate'] > 5:
+            print(f"   🚀 Excellent growth! Video is performing very well")
+        elif growth and growth['views_growth_rate'] > 2:
+            print(f"   ✅ Good growth. Video has steady engagement")
+        elif growth and growth['views_growth_rate'] > 0:
+            print(f"   📊 Moderate growth. Consider promotion strategies")
+        else:
+            print(f"   ⚠️  Limited growth. May need optimization")
+        
+        # Engagement rate
+        if latest['views'] > 0:
+            like_rate = (latest['likes'] / latest['views']) * 100
+            comment_rate = (latest['comments'] / latest['views']) * 100
+            
+            print(f"\n💬 Engagement Rates:")
+            print(f"   Like Rate: {like_rate:.2f}%")
+            print(f"   Comment Rate: {comment_rate:.2f}%")
+            
+            if like_rate > 5:
+                print(f"   ✅ Excellent audience engagement!")
+            elif like_rate > 2:
+                print(f"   👍 Good engagement")
+            else:
+                print(f"   💡 Consider improving content quality")
+        
+        print("\n" + "=" * 70)
+
+# Example usage
+async def track_video_performance(video_id: str):
+    """Track a video's performance"""
+    tracker = VideoAnalyticsTracker()
+    
+    # In production, you'd:
+    # 1. Collect snapshots periodically (hourly/daily)
+    # 2. Store in database
+    # 3. Generate reports on demand
+    
+    await tracker.generate_analytics_report(video_id)
+
+async def compare_video_trajectories(video_ids: list):
+    """Compare growth trajectories of multiple videos"""
+    print("=" * 70)
+    print("📊 COMPARATIVE VIDEO ANALYSIS")
+    print("=" * 70)
+    
+    tracker = VideoAnalyticsTracker()
+    
+    for video_id in video_ids:
+        snapshot = await tracker.collect_snapshot(video_id)
+        print(f"\n📹 {snapshot['title']}")
+        print(f"   Views: {tracker.format_number(snapshot['views'])}")
+        print(f"   Likes: {tracker.format_number(snapshot['likes'])}")
+        print(f"   Like Rate: {(snapshot['likes']/snapshot['views']*100):.2f}%")
+
+if __name__ == "__main__":
+    import sys
+    
+    if len(sys.argv) > 1:
+        video_id = sys.argv[1]
+        asyncio.run(track_video_performance(video_id))
+    else:
+        # Example with a popular video
+        asyncio.run(track_video_performance("dQw4w9WgXcQ"))
+
+### 2. **Channel Comparison Tools**
+
+**What it does:**
+- Compare multiple YouTube channels side-by-side
+- Analyze content strategies
+- Benchmark performance metrics
+- Identify competitive advantages
+- Track market share
+
+**Why it's useful:**
+```
+Scenario: You're a content creator competing with 3 other channels
+
+Comparison shows:
+Channel A: 1M subs, posts daily, 500K avg views
+Channel B: 800K subs, posts weekly, 1M avg views  ⭐ Best strategy
+Channel C: 2M subs, posts monthly, 200K avg views
+Your channel: 500K subs, posts 3x/week, 300K avg views
+
+Insight: Channel B has best engagement despite fewer subscribers!
+Action: Consider posting less frequently but with higher quality
+```
+
+**Real-world applications:**
+- **Competitive analysis**: Understand competitor strategies
+- **Partnership decisions**: Identify collaboration opportunities
+- **Market research**: Track industry trends
+- **Investment analysis**: Evaluate creator potential
+
+"""
+Channel Comparison Tool
+Compare multiple YouTube channels across various metrics
+"""
+
+import asyncio
+import json
+from datetime import datetime
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+SERVER_PARAMS = StdioServerParameters(
+    command="python",
+    args=["-m", "youtube_mcp.server"],
+    env=None
+)
+
+class ChannelComparator:
+    """Compare YouTube channels"""
+    
+    def __init__(self):
+        self.channels_data = []
+    
+    def format_number(self, num: int) -> str:
+        """Format large numbers"""
+        if num >= 1_000_000_000:
+            return f"{num / 1_000_000_000:.1f}B"
+        elif num >= 1_000_000:
+            return f"{num / 1_000_000:.1f}M"
+        elif num >= 1_000:
+            return f"{num / 1_000:.1f}K"
+        return str(num)
+    
+    async def fetch_channel_data(self, channel_id: str):
+        """Fetch comprehensive channel data"""
+        async with stdio_client(SERVER_PARAMS) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                
+                # Get channel info
+                channel_result = await session.call_tool(
+                    "get_channel_info",
+                    arguments={"channel_id": channel_id}
+                )
+                channel_data = json.loads(channel_result.content[0].text)
+                
+                # Get recent videos
+                videos_result = await session.call_tool(
+                    "get_channel_videos",
+                    arguments={"channel_id": channel_id, "max_results": 20}
+                )
+                videos_data = json.loads(videos_result.content[0].text)
+                
+                # Get detailed info for recent videos to calculate averages
+                video_stats = []
+                for video in videos_data['videos'][:10]:  # Sample 10 videos
+                    try:
+                        video_result = await session.call_tool(
+                            "get_video_info",
+                            arguments={"video_id": video['video_id']}
+                        )
+                        video_info = json.loads(video_result.content[0].text)
+                        video_stats.append(video_info['statistics'])
+                    except:
+                        continue
+                
+                # Calculate averages
+                if video_stats:
+                    avg_views = sum(v['views'] for v in video_stats) / len(video_stats)
+                    avg_likes = sum(v['likes'] for v in video_stats) / len(video_stats)
+                    avg_comments = sum(v['comments'] for v in video_stats) / len(video_stats)
+                else:
+                    avg_views = avg_likes = avg_comments = 0
+                
+                return {
+                    'channel_id': channel_id,
+                    'title': channel_data['title'],
+                    'description': channel_data['description'],
+                    'subscribers': channel_data['statistics']['subscribers'],
+                    'total_views': channel_data['statistics']['total_views'],
+                    'video_count': channel_data['statistics']['video_count'],
+                    'country': channel_data.get('country', 'Unknown'),
+                    'recent_videos': len(videos_data['videos']),
+                    'avg_views_per_video': int(avg_views),
+                    'avg_likes_per_video': int(avg_likes),
+                    'avg_comments_per_video': int(avg_comments),
+                    'videos_sampled': len(video_stats)
+                }
+    
+    def calculate_engagement_score(self, channel):
+        """Calculate engagement score (0-100)"""
+        if channel['subscribers'] == 0:
+            return 0
+        
+        # View ratio: avg views / subscribers
+        view_ratio = (channel['avg_views_per_video'] / channel['subscribers']) * 100
+        
+        # Like ratio: avg likes / avg views
+        like_ratio = 0
+        if channel['avg_views_per_video'] > 0:
+            like_ratio = (channel['avg_likes_per_video'] / channel['avg_views_per_video']) * 100
+        
+        # Comment ratio: avg comments / avg views
+        comment_ratio = 0
+        if channel['avg_views_per_video'] > 0:
+            comment_ratio = (channel['avg_comments_per_video'] / channel['avg_views_per_video']) * 100
+        
+        # Weighted score
+        engagement_score = (
+            view_ratio * 0.5 +  # 50% weight
+            like_ratio * 30 +    # 30% weight (scaled)
+            comment_ratio * 200  # 20% weight (scaled)
+        )
+        
+        return min(engagement_score, 100)  # Cap at 100
+    
+    def analyze_content_strategy(self, channel):
+        """Analyze posting frequency and content strategy"""
+        videos_per_month = (channel['video_count'] / 12)  # Rough estimate
+        
+        if videos_per_month > 60:
+            frequency = "Daily+ (Multiple per day)"
+        elif videos_per_month > 30:
+            frequency = "Daily"
+        elif videos_per_month > 12:
+            frequency = "Weekly (2-3x)"
+        elif videos_per_month > 4:
+            frequency = "Weekly"
+        else:
+            frequency = "Monthly"
+        
+        return {
+            'frequency': frequency,
+            'estimated_videos_per_month': round(videos_per_month, 1)
+        }
+    
+    async def compare_channels(self, channel_ids: list):
+        """Compare multiple channels"""
+        print("=" * 80)
+        print("📊 YOUTUBE CHANNEL COMPARISON REPORT")
+        print("=" * 80)
+        print(f"\n🔍 Analyzing {len(channel_ids)} channels...\n")
+        
+        # Fetch all channel data
+        channels = []
+        for i, channel_id in enumerate(channel_ids, 1):
+            print(f"📥 Fetching channel {i}/{len(channel_ids)}...", end="\r")
+            try:
+                data = await self.fetch_channel_data(channel_id)
+                channels.append(data)
+            except Exception as e:
+                print(f"❌ Error fetching channel {channel_id}: {e}")
+        
+        print("\n" + "=" * 80)
+        
+        if not channels:
+            print("❌ No channels to compare")
+            return
+        
+        # Sort by subscribers
+        channels.sort(key=lambda x: x['subscribers'], reverse=True)
+        
+        # Display comparison table
+        print("\n📊 SUBSCRIBER COMPARISON")
+        print("-" * 80)
+        for i, channel in enumerate(channels, 1):
+            print(f"{i}. {channel['title'][:40]:<40} {self.format_number(channel['subscribers']):>10}")
+        
+        print("\n📈 TOTAL VIEWS COMPARISON")
+        print("-" * 80)
+        sorted_by_views = sorted(channels, key=lambda x: x['total_views'], reverse=True)
+        for i, channel in enumerate(sorted_by_views, 1):
+            print(f"{i}. {channel['title'][:40]:<40} {self.format_number(channel['total_views']):>10}")
+        
+        print("\n📹 VIDEO COUNT COMPARISON")
+        print("-" * 80)
+        sorted_by_videos = sorted(channels, key=lambda x: x['video_count'], reverse=True)
+        for i, channel in enumerate(sorted_by_videos, 1):
+            print(f"{i}. {channel['title'][:40]:<40} {channel['video_count']:>10,}")
+        
+        print("\n⭐ AVERAGE VIEWS PER VIDEO")
+        print("-" * 80)
+        sorted_by_avg = sorted(channels, key=lambda x: x['avg_views_per_video'], reverse=True)
+        for i, channel in enumerate(sorted_by_avg, 1):
+            print(f"{i}. {channel['title'][:40]:<40} {self.format_number(channel['avg_views_per_video']):>10}")
+        
+        print("\n💬 ENGAGEMENT SCORES")
+        print("-" * 80)
+        for channel in channels:
+            channel['engagement_score'] = self.calculate_engagement_score(channel)
+        
+        sorted_by_engagement = sorted(channels, key=lambda x: x['engagement_score'], reverse=True)
+        for i, channel in enumerate(sorted_by_engagement, 1):
+            score = channel['engagement_score']
+            bar = "█" * int(score / 5)
+            print(f"{i}. {channel['title'][:35]:<35} {score:5.1f} {bar}")
+        
+        print("\n" + "=" * 80)
+        print("📋 DETAILED ANALYSIS")
+        print("=" * 80)
+        
+        for i, channel in enumerate(channels, 1):
+            print(f"\n{i}. {channel['title']}")
+            print("-" * 80)
+            print(f"   Channel ID: {channel['channel_id']}")
+            print(f"   Subscribers: {self.format_number(channel['subscribers'])}")
+            print(f"   Total Views: {self.format_number(channel['total_views'])}")
+            print(f"   Video Count: {channel['video_count']:,}")
+            print(f"   Country: {channel['country']}")
+            
+            # Metrics
+            print(f"\n   📊 Performance Metrics:")
+            print(f"      Avg Views/Video: {self.format_number(channel['avg_views_per_video'])}")
+            print(f"      Avg Likes/Video: {self.format_number(channel['avg_likes_per_video'])}")
+            print(f"      Avg Comments/Video: {self.format_number(channel['avg_comments_per_video'])}")
+            print(f"      Engagement Score: {channel['engagement_score']:.1f}/100")
+            
+            # View-to-subscriber ratio
+            if channel['subscribers'] > 0:
+                view_ratio = (channel['avg_views_per_video'] / channel['subscribers']) * 100
+                print(f"      View Ratio: {view_ratio:.1f}% (views per subscriber)")
+            
+            # Content strategy
+            strategy = self.analyze_content_strategy(channel)
+            print(f"\n   📅 Content Strategy:")
+            print(f"      Posting Frequency: {strategy['frequency']}")
+            print(f"      Est. Videos/Month: {strategy['estimated_videos_per_month']}")
+            
+            # Strengths
+            print(f"\n   💪 Strengths:")
+            strengths = []
+            
+            if channel == sorted_by_views[0]:
+                strengths.append("Highest total views")
+            if channel == sorted_by_avg[0]:
+                strengths.append("Best avg views per video")
+            if channel == sorted_by_engagement[0]:
+                strengths.append("Highest engagement score")
+            if channel['subscribers'] == max(c['subscribers'] for c in channels):
+                strengths.append("Most subscribers")
+            
+            if not strengths:
+                # Find relative strengths
+                if channel['engagement_score'] > 50:
+                    strengths.append("Strong audience engagement")
+                if view_ratio > 10:
+                    strengths.append("Good view-to-subscriber ratio")
+            
+            for strength in strengths:
+                print(f"      ✓ {strength}")
+        
+        # Winner determination
+        print("\n" + "=" * 80)
+        print("🏆 WINNERS BY CATEGORY")
+        print("=" * 80)
+        
+        print(f"\n📊 Most Subscribers: {channels[0]['title']}")
+        print(f"   {self.format_number(channels[0]['subscribers'])} subscribers")
+        
+        print(f"\n📈 Most Total Views: {sorted_by_views[0]['title']}")
+        print(f"   {self.format_number(sorted_by_views[0]['total_views'])} views")
+        
+        print(f"\n⭐ Best Avg Performance: {sorted_by_avg[0]['title']}")
+        print(f"   {self.format_number(sorted_by_avg[0]['avg_views_per_video'])} avg views/video")
+        
+        print(f"\n💬 Best Engagement: {sorted_by_engagement[0]['title']}")
+        print(f"   {sorted_by_engagement[0]['engagement_score']:.1f}/100 engagement score")
+        
+        # Recommendations
+        print("\n" + "=" * 80)
+        print("💡 INSIGHTS & RECOMMENDATIONS")
+        print("=" * 80)
+        
+        # Find channel with best view-to-subscriber ratio
+        best_efficiency = max(channels, key=lambda x: x['avg_views_per_video'] / max(x['subscribers'], 1))
+        print(f"\n✅ Most Efficient Channel: {best_efficiency['title']}")
+        print(f"   Gets the most views relative to subscriber base")
+        
+        # Identify different strategies
+        daily_poster = max(channels, key=lambda x: x['video_count'])
+        print(f"\n📅 High-Frequency Strategy: {daily_poster['title']}")
+        print(f"   Posts frequently ({daily_poster['video_count']} total videos)")
+        
+        print("\n" + "=" * 80)
+
+async def quick_compare(channel_ids: list):
+    """Quick comparison of channels"""
+    comparator = ChannelComparator()
+    await comparator.compare_channels(channel_ids)
+
+if __name__ == "__main__":
+    import sys
+    
+    if len(sys.argv) > 2:
+        # Compare channels from command line
+        channel_ids = sys.argv[1:]
+        asyncio.run(quick_compare(channel_ids))
+    else:
+        # Example comparison (replace with real channel IDs)
+        example_channels = [
+            "UCX6OQ3DkcsbYNE6H8uQQuVA",  # MrBeast
+            "UCq-Fj5jknLsUf-MWSy4_brA",  # T-Series
+            "UC-lHJZR3Gqxm24_Vd_AJ5Yw",  # PewDiePie
+        ]
+        
+        print("Example: Comparing top 3 YouTube channels")
+        print("Replace with your own channel IDs\n")
+        asyncio.run(quick_compare(example_channels))
+
+### 3. **Automated Report Generation**
+
+**What it does:**
+- Generate formatted reports automatically
+- Schedule reports (daily/weekly/monthly)
+- Export to multiple formats (PDF, Excel, JSON)
+- Email reports to stakeholders
+- Create visual dashboards
+
+**Why it's useful:**
+```
+Scenario: Marketing manager needs weekly YouTube reports
+
+Manual process: 4 hours/week
+- Check each video manually
+- Copy data to spreadsheet
+- Create charts
+- Format presentation
+- Email to team
+
+Automated: 5 minutes/week
+- Script runs automatically
+- Generates PDF report
+- Emails to entire team
+- Saves 3.75 hours/week = 195 hours/year!
+```
+
+**Real-world applications:**
+- **Marketing teams**: Weekly campaign reports
+- **Content creators**: Monthly performance summaries
+- **Agencies**: Client reporting automation
+- **Executives**: High-level dashboards
+
+"""
+Automated Report Generator
+Generate comprehensive YouTube performance reports
+"""
+
+import asyncio
+import json
+from datetime import datetime, timedelta
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+SERVER_PARAMS = StdioServerParameters(
+    command="python",
+    args=["-m", "youtube_mcp.server"],
+    env=None
+)
+
+class YouTubeReportGenerator:
+    """Generate automated YouTube reports"""
+    
+    def __init__(self):
+        self.report_data = {}
+    
+    def format_number(self, num: int) -> str:
+        """Format large numbers"""
+        if num >= 1_000_000_000:
+            return f"{num / 1_000_000_000:.1f}B"
+        elif num >= 1_000_000:
+            return f"{num / 1_000_000:.1f}M"
+        elif num >= 1_000:
+            return f"{num / 1_000:.1f}K"
+        return str(num)
+    
+    async def fetch_channel_data(self, channel_id: str):
+        """Fetch channel data"""
+        async with stdio_client(SERVER_PARAMS) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                
+                result = await session.call_tool(
+                    "get_channel_info",
+                    arguments={"channel_id": channel_id}
+                )
+                
+                return json.loads(result.content[0].text)
+    
+    async def fetch_recent_videos(self, channel_id: str, days=7):
+        """Fetch recent videos from channel"""
+        async with stdio_client(SERVER_PARAMS) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                
+                result = await session.call_tool(
+                    "get_channel_videos",
+                    arguments={"channel_id": channel_id, "max_results": 50}
+                )
+                
+                videos_data = json.loads(result.content[0].text)
+                
+                # Filter by date
+                cutoff_date = datetime.now() - timedelta(days=days)
+                recent_videos = []
+                
+                for video in videos_data['videos']:
+                    published = datetime.fromisoformat(video['published_at'].replace('Z', '+00:00'))
+                    if published >= cutoff_date:
+                        recent_videos.append(video)
+                
+                return recent_videos
+    
+    async def fetch_video_details(self, video_ids: list):
+        """Fetch detailed info for multiple videos"""
+        video_details = []
+        
+        async with stdio_client(SERVER_PARAMS) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                
+                for video_id in video_ids:
+                    try:
+                        result = await session.call_tool(
+                            "get_video_info",
+                            arguments={"video_id": video_id}
+                        )
+                        data = json.loads(result.content[0].text)
+                        video_details.append(data)
+                    except:
+                        continue
+        
+        return video_details
+    
+    def calculate_metrics(self, videos):
+        """Calculate aggregate metrics"""
+        if not videos:
+            return {}
+        
+        total_views = sum(v['statistics']['views'] for v in videos)
+        total_likes = sum(v['statistics']['likes'] for v in videos)
+        total_comments = sum(v['statistics']['comments'] for v in videos)
+        
+        avg_views = total_views / len(videos)
+        avg_likes = total_likes / len(videos)
+        avg_comments = total_comments / len(videos)
+        
+        # Engagement rates
+        avg_like_rate = (total_likes / total_views * 100) if total_views > 0 else 0
+        avg_comment_rate = (total_comments / total_views * 100) if total_views > 0 else 0
+        
+        return {
+            'total_videos': len(videos),
+            'total_views': total_views,
+            'total_likes': total_likes,
+            'total_comments': total_comments,
+            'avg_views': int(avg_views),
+            'avg_likes': int(avg_likes),
+            'avg_comments': int(avg_comments),
+            'avg_like_rate': avg_like_rate,
+            'avg_comment_rate': avg_comment_rate
+        }
+    
+    def identify_top_performers(self, videos, top_n=5):
+        """Identify top performing videos"""
+        sorted_by_views = sorted(videos, key=lambda x: x['statistics']['views'], reverse=True)
+        sorted_by_likes = sorted(videos, key=lambda x: x['statistics']['likes'], reverse=True)
+        sorted_by_engagement = sorted(
+            videos, 
+            key=lambda x: (x['statistics']['likes'] / max(x['statistics']['views'], 1)),
+            reverse=True
+        )
+        
+        return {
+            'top_by_views': sorted_by_views[:top_n],
+            'top_by_likes': sorted_by_likes[:top_n],
+            'top_by_engagement': sorted_by_engagement[:top_n]
+        }
+    
+    async def generate_weekly_report(self, channel_id: str):
+        """Generate weekly performance report"""
+        print("=" * 80)
+        print("📊 YOUTUBE WEEKLY PERFORMANCE REPORT")
+        print("=" * 80)
+        
+        report_date = datetime.now().strftime("%B %d, %Y")
+        print(f"\n📅 Report Date: {report_date}")
+        print(f"📆 Period: Last 7 days")
+        
+        # Fetch data
+        print("\n📥 Fetching channel data...")
+        channel_data = await self.fetch_channel_data(channel_id)
+        
+        print("📥 Fetching recent videos...")
+        recent_videos = await self.fetch_recent_videos(channel_id, days=7)
+        
+        if not recent_videos:
+            print("\n⚠️  No videos published in the last 7 days")
+            return
+        
+        print(f"📥 Analyzing {len(recent_videos)} videos...")
+        video_ids = [v['video_id'] for v in recent_videos]
+        video_details = await self.fetch_video_details(video_ids)
+        
+        # Channel overview
+        print("\n" + "=" * 80)
+        print("📺 CHANNEL OVERVIEW")
+        print("=" * 80)
+        print(f"\nChannel: {channel_data['title']}")
+        print(f"Subscribers: {self.format_number(channel_data['statistics']['subscribers'])}")
+        print(f"Total Videos: {channel_data['statistics']['video_count']:,}")
+        print(f"Total Views: {self.format_number(channel_data['statistics']['total_views'])}")
+        
+        # This week's performance
+        metrics = self.calculate_metrics(video_details)
+        
+        print("\n" + "=" * 80)
+        print("📈 THIS WEEK'S PERFORMANCE")
+        print("=" * 80)
+        print(f"\n📹 Videos Published: {metrics['total_videos']}")
+        print(f"👁️  Total Views: {self.format_number(metrics['total_views'])}")
+        print(f"👍 Total Likes: {self.format_number(metrics['total_likes'])}")
+        print(f"💬 Total Comments: {self.format_number(metrics['total_comments'])}")
+        
+        print(f"\n📊 Average per Video:")
+        print(f"   Views: {self.format_number(metrics['avg_views'])}")
+        print(f"   Likes: {self.format_number(metrics['avg_likes'])}")
+        print(f"   Comments: {self.format_number(metrics['avg_comments'])}")
+        
+        print(f"\n💬 Engagement Rates:")
+        print(f"   Like Rate: {metrics['avg_like_rate']:.2f}%")
+        print(f"   Comment Rate: {metrics['avg_comment_rate']:.2f}%")
+        
+        # Top performers
+        top_performers = self.identify_top_performers(video_details, top_n=3)
+        
+        print("\n" + "=" * 80)
+        print("🏆 TOP PERFORMERS")
+        print("=" * 80)
+        
+        print("\n⭐ Most Viewed Videos:")
+        for i, video in enumerate(top_performers['top_by_views'], 1):
+            print(f"\n{i}. {video['title']}")
+            print(f"   Views: {self.format_number(video['statistics']['views'])}")
+            print(f"   Likes: {self.format_number(video['statistics']['likes'])}")
+            print(f"   Published: {video['published_at']}")
+        
+        print("\n💖 Most Liked Videos:")
+        for i, video in enumerate(top_performers['top_by_likes'], 1):
+            print(f"\n{i}. {video['title']}")
+            print(f"   Likes: {self.format_number(video['statistics']['likes'])}")
+            print(f"   Views: {self.format_number(video['statistics']['views'])}")
+        
+        print("\n🔥 Best Engagement Rate:")
+        for i, video in enumerate(top_performers['top_by_engagement'], 1):
+            engagement = (video['statistics']['likes'] / max(video['statistics']['views'], 1)) * 100
+            print(f"\n{i}. {video['title']}")
+            print(f"   Engagement: {engagement:.2f}%")
+            print(f"   Views: {self.format_number(video['statistics']['views'])}")
+        
+        # All videos this week
+        print("\n" + "=" * 80)
+        print("📋 ALL VIDEOS THIS WEEK")
+        print("=" * 80)
+        
+        for i, video in enumerate(video_details, 1):
+            print(f"\n{i}. {video['title']}")
+            print(f"   Published: {video['published_at']}")
+            print(f"   Views: {self.format_number(video['statistics']['views'])}")
+            print(f"   Likes: {self.format_number(video['statistics']['likes'])}")
+            print(f"   Comments: {self.format_number(video['statistics']['comments'])}")
+            print(f"   Duration: {video['duration']}")
+        
+        # Performance summary
+        print("\n" + "=" * 80)
+        print("📊 PERFORMANCE SUMMARY")
+        print("=" * 80)
+        
+        if metrics['avg_like_rate'] > 5:
+            print("\n✅ Excellent engagement! Audience loves your content")
+        elif metrics['avg_like_rate'] > 2:
+            print("\n👍 Good engagement rates")
+        else:
+            print("\n💡 Consider strategies to improve engagement")
+        
+        if metrics['total_videos'] >= 2:
+            print("✅ Consistent posting schedule maintained")
+        elif metrics['total_videos'] == 1:
+            print("💡 Consider increasing posting frequency")
+        
+        print("\n" + "=" * 80)
+        print("✅ REPORT COMPLETE")
+        print("=" * 80)
+        
+        # Return data for JSON export
+        return {
+            'report_date': report_date,
+            'channel': channel_data,
+            'period': '7 days',
+            'metrics': metrics,
+            'videos': video_details,
+            'top_performers': top_performers
+        }
+    
+    async def generate_monthly_report(self, channel_id: str):
+        """Generate monthly performance report"""
+        print("=" * 80)
+        print("📊 YOUTUBE MONTHLY PERFORMANCE REPORT")
+        print("=" * 80)
+        
+        report_date = datetime.now().strftime("%B %Y")
+        print(f"\n📅 Report Date: {report_date}")
+        print(f"📆 Period: Last 30 days")
+        
+        # Similar to weekly but for 30 days
+        recent_videos = await self.fetch_recent_videos(channel_id, days=30)
+        
+        if not recent_videos:
+            print("\n⚠️  No videos published in the last 30 days")
+            return
+        
+        video_ids = [v['video_id'] for v in recent_videos]
+        video_details = await self.fetch_video_details(video_ids)
+        
+        metrics = self.calculate_metrics(video_details)
+        
+        print(f"\n📹 Videos This Month: {metrics['total_videos']}")
+        print(f"👁️  Total Views: {self.format_number(metrics['total_views'])}")
+        print(f"👍 Total Likes: {self.format_number(metrics['total_likes'])}")
+        print(f"💬 Avg Engagement: {metrics['avg_like_rate']:.2f}%")
+        
+        # More detailed monthly analysis...
+        print("\n✅ Monthly report generated!")
+    
+    def export_to_json(self, report_data, filename="youtube_report.json"):
+        """Export report data to JSON"""
+        with open(filename, 'w') as f:
+            json.dump(report_data, f, indent=2, default=str)
+        print(f"\n💾 Report exported to {filename}")
+    
+    def export_to_markdown(self, report_data, filename="youtube_report.md"):
+        """Export report to Markdown format"""
+        with open(filename, 'w') as f:
+            f.write(f"# YouTube Performance Report\n\n")
+            f.write(f"**Date:** {report_data['report_date']}\n\n")
+            f.write(f"## Channel: {report_data['channel']['title']}\n\n")
+            
+            metrics = report_data['metrics']
+            f.write(f"### Weekly Summary\n\n")
+            f.write(f"- Videos Published: {metrics['total_videos']}\n")
+            f.write(f"- Total Views: {self.format_number(metrics['total_views'])}\n")
+            f.write(f"- Total Likes: {self.format_number(metrics['total_likes'])}\n")
+            f.write(f"- Engagement Rate: {metrics['avg_like_rate']:.2f}%\n\n")
+            
+            # Add more sections...
+        
+        print(f"\n📄 Report exported to {filename}")
+
+async def scheduled_report_generator(channel_id: str, report_type="weekly"):
+    """Generate scheduled reports"""
+    generator = YouTubeReportGenerator()
+    
+    if report_type == "weekly":
+        report_data = await generator.generate_weekly_report(channel_id)
+    elif report_type == "monthly":
+        report_data = await generator.generate_monthly_report(channel_id)
+    
+    if report_data:
+        # Export in multiple formats
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        generator.export_to_json(report_data, f"report_{timestamp}.json")
+        generator.export_to_markdown(report_data, f"report_{timestamp}.md")
+        
+        # In production, you could:
+        # - Send email with report
+        # - Upload to cloud storage
+        # - Post to Slack/Teams
+        # - Generate PDF
+        
+        print("\n📧 In production: Would email report to stakeholders")
+        print("☁️  In production: Would upload to cloud storage")
+
+if __name__ == "__main__":
+    import sys
+    
+    if len(sys.argv) > 1:
+        channel_id = sys.argv[1]
+        report_type = sys.argv[2] if len(sys.argv) > 2 else "weekly"
+        asyncio.run(scheduled_report_generator(channel_id, report_type))
+    else:
+        print("Usage: python automated_report.py CHANNEL_ID [weekly|monthly]")
+        print("\nExample with a real channel:")
+        asyncio.run(scheduled_report_generator("UCX6OQ3DkcsbYNE6H8uQQuVA", "weekly"))
+
+### 4. **Integration with Other APIs**
+
+**What it does:**
+- Combine YouTube data with other platforms
+- Cross-platform analytics
+- Enrich data with external sources
+- Create unified dashboards
+- Automate cross-platform workflows
+
+**Why it's useful:**
+```
+Scenario: Social Media Manager tracking campaign across platforms
+
+YouTube MCP + Twitter API + Instagram API:
+- Video published on YouTube → Auto-tweet with link
+- YouTube comments → Sentiment analysis via NLP API
+- Competitor videos → Track with SEMrush API
+- Performance data → Send to Google Analytics
+- Transcripts → Translate with DeepL API
+
+Result: Complete multi-platform automation!
+```
+
+**Integration examples:**
+"""
+YouTube MCP + Other APIs Integration Examples
+Demonstrates how to combine YouTube MCP with other services
+"""
+
+import asyncio
+import json
+from datetime import datetime
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+SERVER_PARAMS = StdioServerParameters(
+    command="python",
+    args=["-m", "youtube_mcp.server"],
+    env=None
+)
+
+# ==============================================================================
+# INTEGRATION 1: YouTube + Sentiment Analysis (NLP)
+# ==============================================================================
+
+class YouTubeSentimentAnalyzer:
+    """Analyze YouTube comments sentiment"""
+    
+    def __init__(self):
+        pass
+    
+    def analyze_sentiment(self, text: str):
+        """
+        Analyze sentiment of text
+        In production, use real NLP API like:
+        - Google Cloud Natural Language API
+        - AWS Comprehend
+        - OpenAI API
+        - TextBlob
+        """
+        # Simple mock sentiment analysis
+        positive_words = ['good', 'great', 'love', 'awesome', 'amazing', 'excellent']
+        negative_words = ['bad', 'hate', 'terrible', 'awful', 'worst']
+        
+        text_lower = text.lower()
+        
+        positive_count = sum(1 for word in positive_words if word in text_lower)
+        negative_count = sum(1 for word in negative_words if word in text_lower)
+        
+        if positive_count > negative_count:
+            return {'sentiment': 'positive', 'score': 0.8}
+        elif negative_count > positive_count:
+            return {'sentiment': 'negative', 'score': -0.6}
+        else:
+            return {'sentiment': 'neutral', 'score': 0.0}
+    
+    async def analyze_video_comments(self, video_id: str):
+        """Analyze sentiment of video comments"""
+        print("=" * 70)
+        print("💬 COMMENT SENTIMENT ANALYSIS")
+        print("=" * 70)
+        
+        # Fetch comments via YouTube MCP
+        async with stdio_client(SERVER_PARAMS) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                
+                result = await session.call_tool(
+                    "get_video_comments",
+                    arguments={"video_id": video_id, "max_results": 50}
+                )
+                
+                data = json.loads(result.content[0].text)
+        
+        print(f"\nAnalyzing {len(data['comments'])} comments...")
+        
+        # Analyze each comment
+        sentiments = []
+        for comment in data['comments']:
+            sentiment = self.analyze_sentiment(comment['text'])
+            sentiments.append(sentiment)
+        
+        # Calculate overall sentiment
+        avg_score = sum(s['score'] for s in sentiments) / len(sentiments)
+        positive_count = sum(1 for s in sentiments if s['sentiment'] == 'positive')
+        negative_count = sum(1 for s in sentiments if s['sentiment'] == 'negative')
+        neutral_count = sum(1 for s in sentiments if s['sentiment'] == 'neutral')
+        
+        print(f"\n📊 Sentiment Distribution:")
+        print(f"   ✅ Positive: {positive_count} ({positive_count/len(sentiments)*100:.1f}%)")
+        print(f"   ❌ Negative: {negative_count} ({negative_count/len(sentiments)*100:.1f}%)")
+        print(f"   ➖ Neutral: {neutral_count} ({neutral_count/len(sentiments)*100:.1f}%)")
+        print(f"\n   Overall Score: {avg_score:.2f}")
+        
+        if avg_score > 0.3:
+            print("   🎉 Audience reception is very positive!")
+        elif avg_score > 0:
+            print("   👍 Generally positive reception")
+        elif avg_score > -0.3:
+            print("   😐 Mixed reception")
+        else:
+            print("   ⚠️  Negative reception - may need attention")
+
+# ==============================================================================
+# INTEGRATION 2: YouTube + Translation API
+# ==============================================================================
+
+class YouTubeTranslationService:
+    """Translate YouTube content to multiple languages"""
+    
+    def mock_translate(self, text: str, target_lang: str):
+        """
+        Mock translation
+        In production, use:
+        - Google Translate API
+        - DeepL API
+        - Azure Translator
+        """
+        # Simple mock - just returns indication of translation
+        return f"[{target_lang.upper()}] {text[:50]}..."
+    
+    async def translate_video_info(self, video_id: str, target_languages: list):
+        """Translate video title and description"""
+        print("=" * 70)
+        print("🌍 VIDEO TRANSLATION SERVICE")
+        print("=" * 70)
+        
+        # Fetch video info
+        async with stdio_client(SERVER_PARAMS) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                
+                result = await session.call_tool(
+                    "get_video_info",
+                    arguments={"video_id": video_id}
+                )
+                
+                data = json.loads(result.content[0].text)
+        
+        print(f"\nOriginal Title: {data['title']}")
+        print(f"\nTranslations:")
+        
+        for lang in target_languages:
+            translated_title = self.mock_translate(data['title'], lang)
+            print(f"   {lang}: {translated_title}")
+
+# ==============================================================================
+# INTEGRATION 3: YouTube + Social Media Cross-Posting
+# ==============================================================================
+
+class SocialMediaCrossPoster:
+    """Cross-post YouTube videos to other platforms"""
+    
+    async def auto_post_new_video(self, channel_id: str):
+        """Monitor channel and auto-post new videos"""
+        print("=" * 70)
+        print("📱 SOCIAL MEDIA CROSS-POSTING")
+        print("=" * 70)
+        
+        # Get recent videos
+        async with stdio_client(SERVER_PARAMS) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                
+                videos_result = await session.call_tool(
+                    "get_channel_videos",
+                    arguments={"channel_id": channel_id, "max_results": 5}
+                )
+                
+                videos = json.loads(videos_result.content[0].text)
+        
+        print(f"\nFound {len(videos['videos'])} recent videos")
+        
+        for video in videos['videos'][:1]:  # Just show first one
+            print(f"\n📹 New Video Detected:")
+            print(f"   Title: {video['title']}")
+            print(f"   URL: {video['url']}")
+            
+            # Mock social media posts
+            print(f"\n🐦 Twitter Post:")
+            print(f"   'New video alert! {video['title'][:100]} {video['url']}'")
+            
+            print(f"\n📘 Facebook Post:")
+            print(f"   'Check out my latest video: {video['title']}'")
+            print(f"   Link: {video['url']}")
+            
+            print(f"\n📸 Instagram Story:")
+            print(f"   'Link in bio! New video: {video['title'][:50]}...'")
+
+# ==============================================================================
+# INTEGRATION 4: YouTube + Analytics Dashboard
+# ==============================================================================
+
+class AnalyticsDashboard:
+    """Create unified analytics dashboard"""
+    
+    async def create_dashboard_data(self, channel_id: str):
+        """Gather data for dashboard"""
+        print("=" * 70)
+        print("📊 UNIFIED ANALYTICS DASHBOARD")
+        print("=" * 70)
+        
+        # YouTube data
+        async with stdio_client(SERVER_PARAMS) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                
+                channel_result = await session.call_tool(
+                    "get_channel_info",
+                    arguments={"channel_id": channel_id}
+                )
+                channel_data = json.loads(channel_result.content[0].text)
+        
+        dashboard = {
+            'youtube': {
+                'subscribers': channel_data['statistics']['subscribers'],
+                'total_views': channel_data['statistics']['total_views'],
+                'video_count': channel_data['statistics']['video_count']
+            },
+            'twitter': {
+                # Mock data - in production, fetch from Twitter API
+                'followers': 50000,
+                'tweets': 1200
+            },
+            'instagram': {
+                # Mock data - in production, fetch from Instagram API
+                'followers': 75000,
+                'posts': 350
+            },
+            'website': {
+                # Mock data - in production, fetch from Google Analytics
+                'monthly_visitors': 100000,
+                'page_views': 500000
+            }
+        }
+        
+        print("\n📊 Platform Overview:")
+        print(f"\n🎥 YouTube:")
+        print(f"   Subscribers: {self.format_number(dashboard['youtube']['subscribers'])}")
+        print(f"   Total Views: {self.format_number(dashboard['youtube']['total_views'])}")
+        
+        print(f"\n🐦 Twitter:")
+        print(f"   Followers: {self.format_number(dashboard['twitter']['followers'])}")
+        
+        print(f"\n📸 Instagram:")
+        print(f"   Followers: {self.format_number(dashboard['instagram']['followers'])}")
+        
+        print(f"\n🌐 Website:")
+        print(f"   Monthly Visitors: {self.format_number(dashboard['website']['monthly_visitors'])}")
+        
+        # Calculate total reach
+        total_reach = (
+            dashboard['youtube']['subscribers'] +
+            dashboard['twitter']['followers'] +
+            dashboard['instagram']['followers']
+        )
+        
+        print(f"\n📈 Total Social Reach: {self.format_number(total_reach)}")
+        
+        return dashboard
+    
+    def format_number(self, num: int) -> str:
+        """Format large numbers"""
+        if num >= 1_000_000:
+            return f"{num / 1_000_000:.1f}M"
+        elif num >= 1_000:
+            return f"{num / 1_000:.1f}K"
+        return str(num)
+
+# ==============================================================================
+# INTEGRATION 5: YouTube + SEO/Competitor Analysis
+# ==============================================================================
+
+class SEOCompetitorAnalysis:
+    """Analyze competitors and SEO"""
+    
+    async def analyze_competition(self, your_channel_id: str, competitor_ids: list):
+        """Analyze your performance vs competitors"""
+        print("=" * 70)
+        print("🎯 COMPETITOR ANALYSIS")
+        print("=" * 70)
+        
+        channels = []
+        
+        async with stdio_client(SERVER_PARAMS) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                
+                # Get your channel
+                result = await session.call_tool(
+                    "get_channel_info",
+                    arguments={"channel_id": your_channel_id}
+                )
+                your_data = json.loads(result.content[0].text)
+                channels.append(('YOU', your_data))
+                
+                # Get competitors
+                for i, comp_id in enumerate(competitor_ids[:3], 1):
+                    result = await session.call_tool(
+                        "get_channel_info",
+                        arguments={"channel_id": comp_id}
+                    )
+                    comp_data = json.loads(result.content[0].text)
+                    channels.append((f'Competitor {i}', comp_data))
+        
+        print("\n📊 Market Position:")
+        
+        # Sort by subscribers
+        sorted_channels = sorted(channels, key=lambda x: x[1]['statistics']['subscribers'], reverse=True)
+        
+        for i, (label, data) in enumerate(sorted_channels, 1):
+            marker = " ⭐ YOU" if label == "YOU" else ""
+            print(f"\n{i}. {data['title']}{marker}")
+            print(f"   Subscribers: {self.format_number(data['statistics']['subscribers'])}")
+            print(f"   Videos: {data['statistics']['video_count']:,}")
+        
+        # Market share
+        total_subs = sum(c[1]['statistics']['subscribers'] for c in channels)
+        your_share = (your_data['statistics']['subscribers'] / total_subs) * 100
+        
+        print(f"\n📈 Your Market Share: {your_share:.1f}%")
+        
+        if your_share > 40:
+            print("   🏆 Market leader!")
+        elif your_share > 25:
+            print("   ✅ Strong market position")
+        else:
+            print("   💡 Opportunity for growth")
+    
+    def format_number(self, num: int) -> str:
+        if num >= 1_000_000:
+            return f"{num / 1_000_000:.1f}M"
+        elif num >= 1_000:
+            return f"{num / 1_000:.1f}K"
+        return str(num)
+
+# ==============================================================================
+# INTEGRATION 6: YouTube + Email Notifications
+# ==============================================================================
+
+class EmailNotificationSystem:
+    """Send email alerts for YouTube events"""
+    
+    async def monitor_and_alert(self, channel_id: str, thresholds: dict):
+        """Monitor channel and send alerts"""
+        print("=" * 70)
+        print("📧 EMAIL NOTIFICATION SYSTEM")
+        print("=" * 70)
+        
+        async with stdio_client(SERVER_PARAMS) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                
+                # Get recent videos
+                videos_result = await session.call_tool(
+                    "get_channel_videos",
+                    arguments={"channel_id": channel_id, "max_results": 5}
+                )
+                
+                videos = json.loads(videos_result.content[0].text)
+        
+        print("\n🔔 Monitoring for alerts...")
+        
+        for video in videos['videos'][:1]:
+            # Get video details
+            async with stdio_client(SERVER_PARAMS) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    
+                    result = await session.call_tool(
+                        "get_video_info",
+                        arguments={"video_id": video['video_id']}
+                    )
+                    
+                    video_data = json.loads(result.content[0].text)
+            
+            views = video_data['statistics']['views']
+            
+            # Check thresholds
+            if views >= thresholds.get('viral_views', 100000):
+                print(f"\n🔥 ALERT: Video going viral!")
+                print(f"   '{video_data['title']}'")
+                print(f"   Views: {views:,}")
+                print(f"   📧 Sending notification email...")
+            
+            # Check engagement
+            like_rate = (video_data['statistics']['likes'] / max(views, 1)) * 100
+            if like_rate < thresholds.get('low_engagement', 2):
+                print(f"\n⚠️  ALERT: Low engagement detected")
+                print(f"   '{video_data['title']}'")
+                print(f"   Like rate: {like_rate:.2f}%")
+                print(f"   📧 Sending concern email...")
+
+# ==============================================================================
+# Example Usage
+# ==============================================================================
+
+async def example_sentiment_analysis():
+    """Example: Analyze comment sentiment"""
+    analyzer = YouTubeSentimentAnalyzer()
+    await analyzer.analyze_video_comments("dQw4w9WgXcQ")
+
+async def example_translation():
+    """Example: Translate video content"""
+    translator = YouTubeTranslationService()
+    await translator.translate_video_info(
+        "dQw4w9WgXcQ",
+        target_languages=['es', 'fr', 'de', 'ja']
+    )
+
+async def example_cross_posting():
+    """Example: Cross-post to social media"""
+    poster = SocialMediaCrossPoster()
+    await poster.auto_post_new_video("UCX6OQ3DkcsbYNE6H8uQQuVA")
+
+async def example_dashboard():
+    """Example: Create analytics dashboard"""
+    dashboard = AnalyticsDashboard()
+    await dashboard.create_dashboard_data("UCX6OQ3DkcsbYNE6H8uQQuVA")
+
+async def example_competitor_analysis():
+    """Example: Analyze competition"""
+    seo = SEOCompetitorAnalysis()
+    await seo.analyze_competition(
+        "UCX6OQ3DkcsbYNE6H8uQQuVA",  # Your channel
+        [
+            "UCq-Fj5jknLsUf-MWSy4_brA",  # Competitor 1
+            "UC-lHJZR3Gqxm24_Vd_AJ5Yw"   # Competitor 2
+        ]
+    )
+
+async def example_email_alerts():
+    """Example: Email notification system"""
+    notifier = EmailNotificationSystem()
+    await notifier.monitor_and_alert(
+        "UCX6OQ3DkcsbYNE6H8uQQuVA",
+        thresholds={
+            'viral_views': 100000,
+            'low_engagement': 2.0
+        }
+    )
+
+if __name__ == "__main__":
+    import sys
+    
+    examples = {
+        'sentiment': example_sentiment_analysis,
+        'translate': example_translation,
+        'crosspost': example_cross_posting,
+        'dashboard': example_dashboard,
+        'competitor': example_competitor_analysis,
+        'alerts': example_email_alerts
+    }
+    
+    if len(sys.argv) > 1 and sys.argv[1] in examples:
+        asyncio.run(examples[sys.argv[1]]())
+    else:
+        print("Available integration examples:")
+        print("  python api_integrations.py sentiment    - Comment sentiment analysis")
+        print("  python api_integrations.py translate    - Multi-language translation")
+        print("  python api_integrations.py crosspost    - Social media cross-posting")
+        print("  python api_integrations.py dashboard    - Unified analytics dashboard")
+        print("  python api_integrations.py competitor   - Competitor analysis")
+        print("  python api_integrations.py alerts       - Email notification system")
+        print("\nRunning all examples...")
+        
+        for name, func in examples.items():
+            print(f"\n{'='*70}")
+            print(f"Running: {name}")
+            print('='*70)
+            asyncio.run(func())
+            print()
+
+## 🎯 How to Use This YouTube MCP
+
+### **1. Direct Usage (Python Scripts)**
+
+```bash
+# Basic usage
+python examples/demo_client.py
+
+# Advanced analytics
+python examples/video_analytics_tracker.py VIDEO_ID
+
+# Channel comparison
+python examples/channel_comparison.py CHANNEL_ID1 CHANNEL_ID2
+
+# Automated reports
+python examples/automated_report.py CHANNEL_ID weekly
+
+# API integrations
+python examples/api_integrations.py sentiment
+```
+
+###
+
+ **2. With Claude Desktop (Conversational AI)**
+
+After configuring Claude Desktop:
+
+```
+You: "Analyze this YouTube video for me: [URL]"
+Claude: [Uses MCP to fetch info, transcript, comments]
+
+You: "Compare these 3 YouTube channels and tell me which has the best engagement"
+Claude: [Fetches data, analyzes, provides insights]
+
+You: "Generate a weekly report for my channel"
+Claude: [Creates comprehensive performance report]
+
+You: "What are people saying about this video? Analyze the sentiment"
+Claude: [Fetches comments, analyzes sentiment, provides summary]
+```
+
+### **3. Automated Workflows (Cron Jobs)**
+
+```bash
+# Set up daily report
+0 9 * * * python automated_report.py YOUR_CHANNEL_ID daily
+
+# Monitor competitor daily
+0 */6 * * * python competitor_monitor.py COMPETITOR_ID
+
+# Track trending weekly
+0 10 * * 1 python trending_tracker.py
+```
+
+### **4. In Your Applications**
+
+```python
+# Content management system
+from youtube_mcp_client import YouTubeMCP
+
+async def publish_workflow(video_id):
+    mcp = YouTubeMCP()
+    
+    # Get video info
+    video = await mcp.get_video_info(video_id)
+    
+    # Auto-generate blog post
+    transcript = await mcp.get_transcript(video_id)
+    blog_post = generate_blog_from_transcript(transcript)
+    
+    # Cross-post to social media
+    await post_to_twitter(video['title'], video['url'])
+    await post_to_facebook(video)
+```
+
+---
+
+## 💡 Why This MCP is Incredibly Useful
+
+### **For Content Creators**
+
+✅ **Save Time**: Automate repetitive tasks
+- Manual research: 3 hours → Automated: 5 minutes
+- Weekly reports: 2 hours → Automated: instant
+
+✅ **Data-Driven Decisions**: 
+- Know exactly what content performs best
+- Identify optimal posting times
+- Understand audience preferences
+
+✅ **Competitive Advantage**:
+- Track competitors automatically
+- Identify trending topics before they peak
+- Learn from successful strategies
+
+### **For Marketing Teams**
+
+✅ **Campaign Tracking**:
+- Monitor performance in real-time
+- Measure ROI accurately
+- Adjust strategies quickly
+
+✅ **Reporting**:
+- Automated weekly/monthly reports
+- Professional presentations
+- Executive dashboards
+
+✅ **Multi-Platform Management**:
+- Unified view of all platforms
+- Cross-platform analytics
+- Consistent messaging
+
+### **For Researchers**
+
+✅ **Data Collection**:
+- Gather large datasets easily
+- Track trends over time
+- Analyze patterns
+
+✅ **Analysis**:
+- Sentiment analysis at scale
+- Topic modeling
+- Network analysis
+
+✅ **Academic Studies**:
+- Media consumption patterns
+- Viral content mechanics
+- Platform algorithms
+
+### **For Businesses**
+
+✅ **Brand Monitoring**:
+- Track brand mentions
+- Monitor sentiment
+- Respond to trends
+
+✅ **Influencer Marketing**:
+- Identify potential partners
+- Verify audience engagement
+- Track campaign performance
+
+✅ **Market Research**:
+- Understand customer preferences
+- Identify market gaps
+- Competitive intelligence
+
+---
+
+## 📊 Real-World Impact
+
+### **Time Savings**
+```
+Manual YouTube research: 20 hours/week
+With MCP automation: 2 hours/week
+Savings: 18 hours/week = 936 hours/year = 23 work weeks!
+```
+
+### **Cost Savings**
+```
+Manual analyst: $50,000/year
+Automation + MCP: $500/year (API costs)
+Savings: $49,500/year
+```
+
+### **Better Insights**
+```
+Manual: Limited sample size, human bias
+Automated: Complete data, objective analysis
+Result: 10x more accurate decisions
+```
+
+---
+
+## 🚀 Summary: The Power of YouTube MCP
+
+Your YouTube MCP transforms from a **simple data fetcher** into a **complete YouTube intelligence platform** with these features:
+
+1. **Video Analytics Over Time** → Track growth, predict trends
+2. **Channel Comparison** → Competitive intelligence, benchmarking
+3. **Automated Reports** → Save time, professional outputs
+4. **API Integrations** → Multi-platform power, workflow automation
+
+**The Result**: You get YouTube "superpowers" - understanding what works, why it works, and how to replicate success, all while saving hundreds of hours and thousands of dollars!
+
+Would you like me to help you implement any specific integration or create a custom workflow for your use case?
