@@ -1,6 +1,6 @@
 # YouTube MCP Server
 
-A Model Context Protocol (MCP) server for YouTube data access - fetch video metadata, transcripts, comments, and more.
+A Model Context Protocol (MCP) server for YouTube data access - fetch video metadata, transcripts, comments, and advanced analytics.
 
 ## Features
 
@@ -11,6 +11,7 @@ A Model Context Protocol (MCP) server for YouTube data access - fetch video meta
 - **Channel Information** - Get channel details and statistics
 - **Trending Videos** - Get trending videos by region
 - **Playlist Information** - Get playlist details and videos
+- **Video Analytics** - Track metrics, growth patterns, viral moments, and performance predictions
 
 ## Setup
 
@@ -88,6 +89,8 @@ Or use the `.env` file:
 
 ## Available Tools
 
+### Core Tools
+
 ### 1. `get_video_info`
 Get comprehensive video metadata.
 
@@ -145,6 +148,39 @@ Get playlist details and videos.
 - `playlist_id` (required): YouTube playlist ID
 - `max_results` (optional): Number of videos (1-50, default: 20)
 
+### Analytics Tools
+
+### 9. `track_video_metrics`
+Track how a video's metrics change over time. Returns historical view/like/comment counts.
+
+**Parameters:**
+- `video_id` (required): YouTube video ID
+
+### 10. `monitor_growth_patterns`
+Monitor growth patterns (views, likes, comments). Returns calculated growth rates.
+
+**Parameters:**
+- `video_id` (required): YouTube video ID
+
+### 11. `identify_viral_moments`
+Identify viral moments where metrics spiked.
+
+**Parameters:**
+- `video_id` (required): YouTube video ID
+
+### 12. `compare_video_performance`
+Compare video performance at different stages (e.g. now vs 2 weeks ago).
+
+**Parameters:**
+- `video_id` (required): YouTube video ID
+
+### 13. `predict_video_performance`
+Predict future performance based on trends.
+
+**Parameters:**
+- `video_id` (required): YouTube video ID
+- `days_ahead` (optional): Days to predict (default: 7)
+
 ## API Quota Information
 
 YouTube Data API has daily quota limits:
@@ -159,14 +195,37 @@ YouTube Data API has daily quota limits:
 - `search_videos`: 100 units
 - `get_channel_info`: 1 unit
 - `get_trending_videos`: 1 unit
+- Analytics Tools (`track_video_metrics`, etc.): 1 unit each
 
 ## Examples
 
-See the `examples/basic/` directory for testing scripts:
+See the `examples/` directory for testing scripts:
+
+### Basic Examples (`examples/basic/`)
 - `individual_examples.py` - Test individual tools
 - `demo_client.py` - Complete demonstration
 - `quick_test.py` - Quick functionality test
 - `interactive_demo.py` - Interactive demo
+
+### Video Analytics (`examples/video-analytics/`)
+- `test_analytics.py` - Test analytics tools
+- Advanced metrics tracking and analysis
+
+### Usage
+
+```bash
+# Run all basic demos
+python examples/basic/demo_client.py
+
+# Test specific tool
+python examples/basic/individual_examples.py video
+
+# Test analytics
+python examples/video-analytics/test_analytics.py all
+
+# Interactive mode
+python examples/basic/interactive_demo.py
+```
 
 ## Troubleshooting
 
