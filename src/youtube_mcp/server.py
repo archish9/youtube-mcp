@@ -461,6 +461,79 @@ async def handle_list_tools() -> list[types.Tool]:
                 },
                 "required": ["video_id"]
             }
+        ),
+        types.Tool(
+            name="compare_channels",
+            description="Compare multiple YouTube channels side-by-side with detailed metrics.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "channel_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of YouTube channel IDs to compare (2-5 channels)"
+                    }
+                },
+                "required": ["channel_ids"]
+            }
+        ),
+        types.Tool(
+            name="analyze_content_strategy",
+            description="Analyze content strategy of a channel (posting frequency, video types, engagement patterns).",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "channel_id": {"type": "string", "description": "YouTube channel ID"}
+                },
+                "required": ["channel_id"]
+            }
+        ),
+        types.Tool(
+            name="benchmark_performance",
+            description="Benchmark a channel's performance against competitors.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "target_channel_id": {"type": "string", "description": "Target channel ID to benchmark"},
+                    "competitor_channel_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of competitor channel IDs"
+                    }
+                },
+                "required": ["target_channel_id", "competitor_channel_ids"]
+            }
+        ),
+        types.Tool(
+            name="identify_competitive_advantages",
+            description="Identify competitive advantages and weaknesses of a channel compared to others.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "channel_id": {"type": "string", "description": "YouTube channel ID"},
+                    "comparison_channel_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of channel IDs to compare against"
+                    }
+                },
+                "required": ["channel_id", "comparison_channel_ids"]
+            }
+        ),
+        types.Tool(
+            name="track_market_share",
+            description="Track market share and audience distribution across multiple channels.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "channel_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of YouTube channel IDs"
+                    }
+                },
+                "required": ["channel_ids"]
+            }
         )
     ]
 
@@ -915,6 +988,254 @@ async def handle_call_tool(
 
             predictions = predict_future_views_logic(snapshots, days_ahead)
             return [types.TextContent(type="text", text=json.dumps(predictions, indent=2))]
+
+        elif name == "compare_channels":
+            channel_ids = arguments.get("channel_ids", [])
+            if len(channel_ids) < 2:
+                return [types.TextContent(type="text", text="Error: At least 2 channels required for comparison")]
+            
+            channels_data = []
+            for channel_id in channel_ids[:5]:  # Limit to 5 channels
+                try:
+                    request = get_youtube_client().channels().list(
+                        part="snippet,statistics",
+                        id=channel_id
+                    )
+                    response = request.execute()
+                    if response.get("items"):
+                        channel = response["items"][0]
+                        snippet = channel["snippet"]
+                        stats = channel["statistics"]
+                        
+                        channels_data.append({
+                            "channel_id": channel_id,
+                            "title": snippet["title"],
+                            "subscribers": int(stats.get("subscriberCount", 0)),
+                            "total_views": int(stats.get("viewCount", 0)),
+                            "video_count": int(stats.get("videoCount", 0)),
+                            "country": snippet.get("country", "Unknown"),
+                            "avg_views_per_video": int(stats.get("viewCount", 0)) // max(int(stats.get("videoCount", 1)), 1)
+                        })
+                except:
+                    continue
+            
+            return [types.TextContent(type="text", text=json.dumps({"channels": channels_data}, indent=2))]
+
+        elif name == "analyze_content_strategy":
+            channel_id = arguments.get("channel_id")
+            
+            # Get channel info
+            channel_request = get_youtube_client().channels().list(
+                part="snippet,statistics",
+                id=channel_id
+            )
+            channel_response = channel_request.execute()
+            if not channel_response.get("items"):
+                return [types.TextContent(type="text", text=f"Channel not found: {channel_id}")]
+            
+            channel = channel_response["items"][0]
+            stats = channel["statistics"]
+            
+            # Get recent videos
+            videos_request = get_youtube_client().search().list(
+                part="snippet",
+                channelId=channel_id,
+                type="video",
+                order="date",
+                maxResults=20
+            )
+            videos_response = videos_request.execute()
+            
+            video_count = int(stats.get("videoCount", 0))
+            videos_per_month = video_count / 12 if video_count > 0 else 0
+            
+            if videos_per_month > 60:
+                frequency = "Daily+ (Multiple per day)"
+            elif videos_per_month > 30:
+                frequency = "Daily"
+            elif videos_per_month > 12:
+                frequency = "Weekly (2-3x)"
+            elif videos_per_month > 4:
+                frequency = "Weekly"
+            else:
+                frequency = "Monthly"
+            
+            strategy = {
+                "channel_id": channel_id,
+                "title": channel["snippet"]["title"],
+                "total_videos": video_count,
+                "estimated_videos_per_month": round(videos_per_month, 1),
+                "posting_frequency": frequency,
+                "recent_videos_count": len(videos_response.get("items", [])),
+                "subscribers": int(stats.get("subscriberCount", 0)),
+                "avg_views_per_video": int(stats.get("viewCount", 0)) // max(video_count, 1)
+            }
+            
+            return [types.TextContent(type="text", text=json.dumps(strategy, indent=2))]
+
+        elif name == "benchmark_performance":
+            target_id = arguments.get("target_channel_id")
+            competitor_ids = arguments.get("competitor_channel_ids", [])
+            
+            all_ids = [target_id] + competitor_ids
+            channels_data = []
+            
+            for channel_id in all_ids:
+                try:
+                    request = get_youtube_client().channels().list(
+                        part="snippet,statistics",
+                        id=channel_id
+                    )
+                    response = request.execute()
+                    if response.get("items"):
+                        channel = response["items"][0]
+                        snippet = channel["snippet"]
+                        stats = channel["statistics"]
+                        
+                        subs = int(stats.get("subscriberCount", 0))
+                        views = int(stats.get("viewCount", 0))
+                        videos = int(stats.get("videoCount", 1))
+                        
+                        channels_data.append({
+                            "channel_id": channel_id,
+                            "title": snippet["title"],
+                            "is_target": channel_id == target_id,
+                            "subscribers": subs,
+                            "total_views": views,
+                            "video_count": videos,
+                            "avg_views_per_video": views // videos,
+                            "engagement_score": (views / max(subs, 1)) * 100
+                        })
+                except:
+                    continue
+            
+            # Calculate rankings
+            target_data = next((c for c in channels_data if c["is_target"]), None)
+            if target_data:
+                sorted_by_subs = sorted(channels_data, key=lambda x: x["subscribers"], reverse=True)
+                sorted_by_engagement = sorted(channels_data, key=lambda x: x["engagement_score"], reverse=True)
+                
+                target_data["rank_by_subscribers"] = sorted_by_subs.index(target_data) + 1
+                target_data["rank_by_engagement"] = sorted_by_engagement.index(target_data) + 1
+            
+            return [types.TextContent(type="text", text=json.dumps({
+                "target": target_data,
+                "competitors": [c for c in channels_data if not c["is_target"]],
+                "total_channels": len(channels_data)
+            }, indent=2))]
+
+        elif name == "identify_competitive_advantages":
+            channel_id = arguments.get("channel_id")
+            comparison_ids = arguments.get("comparison_channel_ids", [])
+            
+            all_ids = [channel_id] + comparison_ids
+            channels_data = []
+            
+            for cid in all_ids:
+                try:
+                    request = get_youtube_client().channels().list(
+                        part="snippet,statistics",
+                        id=cid
+                    )
+                    response = request.execute()
+                    if response.get("items"):
+                        channel = response["items"][0]
+                        stats = channel["statistics"]
+                        
+                        subs = int(stats.get("subscriberCount", 0))
+                        views = int(stats.get("viewCount", 0))
+                        videos = int(stats.get("videoCount", 1))
+                        
+                        channels_data.append({
+                            "channel_id": cid,
+                            "title": channel["snippet"]["title"],
+                            "is_target": cid == channel_id,
+                            "subscribers": subs,
+                            "total_views": views,
+                            "video_count": videos,
+                            "avg_views_per_video": views // videos,
+                            "view_to_sub_ratio": (views / max(subs, 1))
+                        })
+                except:
+                    continue
+            
+            target = next((c for c in channels_data if c["is_target"]), None)
+            if not target:
+                return [types.TextContent(type="text", text="Target channel not found")]
+            
+            advantages = []
+            weaknesses = []
+            
+            # Compare metrics
+            avg_subs = sum(c["subscribers"] for c in channels_data) / len(channels_data)
+            avg_views_per_video = sum(c["avg_views_per_video"] for c in channels_data) / len(channels_data)
+            avg_ratio = sum(c["view_to_sub_ratio"] for c in channels_data) / len(channels_data)
+            
+            if target["subscribers"] > avg_subs:
+                advantages.append("Above average subscriber count")
+            else:
+                weaknesses.append("Below average subscriber count")
+            
+            if target["avg_views_per_video"] > avg_views_per_video:
+                advantages.append("Above average views per video")
+            else:
+                weaknesses.append("Below average views per video")
+            
+            if target["view_to_sub_ratio"] > avg_ratio:
+                advantages.append("Strong view-to-subscriber ratio")
+            else:
+                weaknesses.append("Weak view-to-subscriber ratio")
+            
+            return [types.TextContent(type="text", text=json.dumps({
+                "channel": target["title"],
+                "advantages": advantages,
+                "weaknesses": weaknesses,
+                "metrics": target
+            }, indent=2))]
+
+        elif name == "track_market_share":
+            channel_ids = arguments.get("channel_ids", [])
+            
+            channels_data = []
+            total_subs = 0
+            total_views = 0
+            
+            for channel_id in channel_ids:
+                try:
+                    request = get_youtube_client().channels().list(
+                        part="snippet,statistics",
+                        id=channel_id
+                    )
+                    response = request.execute()
+                    if response.get("items"):
+                        channel = response["items"][0]
+                        stats = channel["statistics"]
+                        
+                        subs = int(stats.get("subscriberCount", 0))
+                        views = int(stats.get("viewCount", 0))
+                        
+                        channels_data.append({
+                            "channel_id": channel_id,
+                            "title": channel["snippet"]["title"],
+                            "subscribers": subs,
+                            "total_views": views
+                        })
+                        
+                        total_subs += subs
+                        total_views += views
+                except:
+                    continue
+            
+            # Calculate market share
+            for channel in channels_data:
+                channel["subscriber_share_percent"] = (channel["subscribers"] / max(total_subs, 1)) * 100
+                channel["view_share_percent"] = (channel["total_views"] / max(total_views, 1)) * 100
+            
+            return [types.TextContent(type="text", text=json.dumps({
+                "total_subscribers": total_subs,
+                "total_views": total_views,
+                "channels": channels_data
+            }, indent=2))]
 
         else:
             raise ValueError(f"Unknown tool: {name}")

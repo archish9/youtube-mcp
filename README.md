@@ -12,6 +12,7 @@ A Model Context Protocol (MCP) server for YouTube data access - fetch video meta
 - **Trending Videos** - Get trending videos by region
 - **Playlist Information** - Get playlist details and videos
 - **Video Analytics** - Track metrics, growth patterns, viral moments, and performance predictions
+- **Channel Comparison** - Compare channels, analyze strategies, benchmark performance, and track market share
 
 ## Setup
 
@@ -181,6 +182,40 @@ Predict future performance based on trends.
 - `video_id` (required): YouTube video ID
 - `days_ahead` (optional): Days to predict (default: 7)
 
+### Channel Comparison Tools
+
+### 14. `compare_channels`
+Compare multiple YouTube channels side-by-side with detailed metrics.
+
+**Parameters:**
+- `channel_ids` (required): Array of 2-5 YouTube channel IDs
+
+### 15. `analyze_content_strategy`
+Analyze a channel's content strategy including posting frequency and engagement patterns.
+
+**Parameters:**
+- `channel_id` (required): YouTube channel ID
+
+### 16. `benchmark_performance`
+Benchmark a target channel's performance against competitors.
+
+**Parameters:**
+- `target_channel_id` (required): Your channel ID
+- `competitor_channel_ids` (required): Array of competitor channel IDs
+
+### 17. `identify_competitive_advantages`
+Identify competitive advantages and weaknesses compared to other channels.
+
+**Parameters:**
+- `channel_id` (required): Channel to analyze
+- `comparison_channel_ids` (required): Array of channels to compare against
+
+### 18. `track_market_share`
+Track market share and audience distribution across multiple channels.
+
+**Parameters:**
+- `channel_ids` (required): Array of YouTube channel IDs
+
 ## API Quota Information
 
 YouTube Data API has daily quota limits:
@@ -196,6 +231,7 @@ YouTube Data API has daily quota limits:
 - `get_channel_info`: 1 unit
 - `get_trending_videos`: 1 unit
 - Analytics Tools (`track_video_metrics`, etc.): 1 unit each
+- Channel Comparison Tools: 1-2 units per channel
 
 ## Examples
 
@@ -211,6 +247,12 @@ See the `examples/` directory for testing scripts:
 - `test_analytics.py` - Test analytics tools
 - Advanced metrics tracking and analysis
 
+### Channel Comparison (`examples/channel-comparison/`)
+- `individual_examples.py` - Test individual tools
+- `demo_scenarios.py` - Complete demonstration
+- `quick_test.py` - Quick functionality test
+- Compare channels, analyze strategies, benchmark performance
+
 ### Usage
 
 ```bash
@@ -222,6 +264,12 @@ python examples/basic/individual_examples.py video
 
 # Test analytics
 python examples/video-analytics/test_analytics.py all
+
+# Test channel comparison
+python examples/channel-comparison/individual_examples.py all
+
+# Run demo scenarios
+python examples/channel-comparison/demo_scenarios.py
 
 # Interactive mode
 python examples/basic/interactive_demo.py
