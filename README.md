@@ -1,45 +1,92 @@
 # YouTube MCP Server
 
-A Model Context Protocol (MCP) server for YouTube data access - fetch video metadata, transcripts, comments, and advanced analytics.
+A powerful [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that provides AI assistants with comprehensive access to YouTube data — video metadata, transcripts, comments, channel analytics, and competitive analysis.
+
+## What is YouTube MCP?
+
+YouTube MCP is an MCP server that enables AI assistants like Claude, Cursor, and other MCP-compatible tools to interact with YouTube data. Instead of manually copying video information, your AI can directly:
+
+- **Fetch video details** — titles, descriptions, view counts, likes, durations
+- **Extract transcripts** — get full video transcripts with timestamps
+- **Analyze comments** — retrieve and analyze audience feedback
+- **Research channels** — explore channel statistics and content strategies
+- **Track performance** — monitor video growth, identify viral moments, predict trends
+- **Compare competitors** — benchmark channels and track market share
+
+## Who Benefits?
+
+| Audience | Use Cases |
+|----------|-----------|
+| **Content Creators** | Analyze competitor strategies, track video performance, optimize content |
+| **Marketing Teams** | Research influencers, measure campaign ROI, generate reports |
+| **Researchers** | Study content trends, analyze audience behavior, gather transcripts |
+| **Investors** | Evaluate creator potential, compare channel performance, track growth |
+| **Developers** | Build AI-powered YouTube tools, automate data collection |
 
 ## Features
 
-- **Video Information** - Get detailed video metadata (title, description, views, likes, duration)
-- **Transcripts** - Fetch video transcripts/captions in multiple languages
-- **Comments** - Retrieve top comments from videos
-- **Search** - Search for videos by keyword
-- **Channel Information** - Get channel details and statistics
-- **Trending Videos** - Get trending videos by region
-- **Playlist Information** - Get playlist details and videos
-- **Video Analytics** - Track metrics, growth patterns, viral moments, and performance predictions
-- **Channel Comparison** - Compare channels, analyze strategies, benchmark performance, and track market share
+### Core Tools (8 tools)
+- **Video Info** — Get detailed metadata for any video
+- **Transcripts** — Fetch captions in multiple languages
+- **Comments** — Retrieve top comments with engagement data
+- **Search** — Find videos by keyword
+- **Channel Info** — Get channel statistics and details
+- **Channel Videos** — List recent uploads
+- **Trending** — Discover trending videos by region
+- **Playlists** — Access playlist contents
 
-## Setup
+### Video Analytics (5 tools)
+- Track metrics over time
+- Monitor growth patterns
+- Identify viral moments
+- Compare performance stages
+- Predict future views
 
-### 1. Get YouTube API Key
+### Channel Comparison (5 tools)
+- Compare multiple channels
+- Analyze content strategies
+- Benchmark performance
+- Identify competitive advantages
+- Track market share
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select existing one
-3. Enable **YouTube Data API v3**
-4. Go to "Credentials" -> "Create Credentials" -> "API Key"
-5. Copy your API key
+---
 
-### 2. Install Dependencies
+## Installation
+
+### Prerequisites
+
+- **Python 3.10+**
+- **YouTube Data API Key** ([Get one here](https://console.cloud.google.com/))
+
+### Step 1: Get a YouTube API Key
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/).
+2. Create a new project (or select an existing one).
+3. Enable the **YouTube Data API v3**.
+4. Go to **Credentials** → **Create Credentials** → **API Key**.
+5. Copy your API key.
+
+### Step 2: Clone and Install
 
 ```bash
 # Clone the repository
-git clone <your-repo-url>
+git clone https://github.com/your-username/youtube-mcp.git
 cd youtube-mcp
 
 # Create virtual environment
 python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Install in development mode
+# Activate virtual environment
+# On Windows:
+.venv\Scripts\activate
+# On macOS/Linux:
+source .venv/bin/activate
+
+# Install the package
 pip install -e .
 ```
 
-### 3. Configure API Key
+### Step 3: Configure API Key
 
 Create a `.env` file in the project root:
 
@@ -47,18 +94,23 @@ Create a `.env` file in the project root:
 YOUTUBE_API_KEY=your_api_key_here
 ```
 
-### 4. Test the Server
+### Step 4: Test the Installation
 
 ```bash
-python -m youtube_mcp.server
+# Run a quick test
+python examples/basic/quick_test.py
 ```
 
-## Usage with Claude Desktop
+---
+
+## Usage with AI Assistants
+
+### Claude Desktop
 
 Add to your Claude Desktop config file:
 
-**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`  
+**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
@@ -66,6 +118,7 @@ Add to your Claude Desktop config file:
     "youtube": {
       "command": "python",
       "args": ["-m", "youtube_mcp.server"],
+      "cwd": "C:/path/to/youtube-mcp",
       "env": {
         "YOUTUBE_API_KEY": "your_api_key_here"
       }
@@ -74,7 +127,22 @@ Add to your Claude Desktop config file:
 }
 ```
 
-Or use the `.env` file:
+**Alternative (using .env file):**
+```json
+{
+  "mcpServers": {
+    "youtube": {
+      "command": "python",
+      "args": ["-m", "youtube_mcp.server"],
+      "cwd": "C:/path/to/youtube-mcp"
+    }
+  }
+}
+```
+
+### Cursor IDE
+
+Add to your Cursor settings (`.cursor/mcp.json` in your project or global settings):
 
 ```json
 {
@@ -82,219 +150,87 @@ Or use the `.env` file:
     "youtube": {
       "command": "python",
       "args": ["-m", "youtube_mcp.server"],
-      "cwd": "/path/to/youtube-mcp"
+      "cwd": "C:/path/to/youtube-mcp",
+      "env": {
+        "YOUTUBE_API_KEY": "your_api_key_here"
+      }
     }
   }
 }
 ```
 
-## Available Tools
+> **Note:** Replace `C:/path/to/youtube-mcp` with the actual path to your youtube-mcp directory.
 
-### Core Tools
+---
 
-### 1. `get_video_info`
-Get comprehensive video metadata.
+## Quick Start
 
-**Parameters:**
-- `video_id` (required): YouTube video ID or URL
+Once configured, you can ask your AI assistant:
 
-### 2. `get_video_transcript`
-Fetch video transcript/captions.
+- *"Get info about this YouTube video: https://youtube.com/watch?v=dQw4w9WgXcQ"*
+- *"Fetch the transcript for video ID abc123"*
+- *"Search for Python tutorial videos"*
+- *"Compare these two channels: UCX6OQ3DkcsbYNE6H8uQQuVA and UC-lHJZR3Gqxm24_Vd_AJ5Yw"*
+- *"Track the performance of my latest video"*
+- *"What are the trending videos in the US right now?"*
 
-**Parameters:**
-- `video_id` (required): YouTube video ID or URL
-- `language` (optional): Language code (default: "en")
-
-### 3. `get_video_comments`
-Get top comments from a video.
-
-**Parameters:**
-- `video_id` (required): YouTube video ID or URL
-- `max_results` (optional): Number of comments (1-100, default: 20)
-- `order` (optional): "time" or "relevance" (default: "relevance")
-
-### 4. `search_videos`
-Search for videos by keyword.
-
-**Parameters:**
-- `query` (required): Search query
-- `max_results` (optional): Number of results (1-50, default: 10)
-- `order` (optional): Sort by date/rating/relevance/title/viewCount
-
-### 5. `get_channel_info`
-Get channel information and statistics.
-
-**Parameters:**
-- `channel_id` (required): YouTube channel ID or URL
-
-### 6. `get_channel_videos`
-List recent videos from a channel.
-
-**Parameters:**
-- `channel_id` (required): YouTube channel ID
-- `max_results` (optional): Number of videos (1-50, default: 10)
-
-### 7. `get_trending_videos`
-Get trending videos by region.
-
-**Parameters:**
-- `region_code` (optional): Country code (default: "US")
-- `category_id` (optional): Category ID (default: "0" for all)
-- `max_results` (optional): Number of videos (1-50, default: 10)
-
-### 8. `get_playlist_info`
-Get playlist details and videos.
-
-**Parameters:**
-- `playlist_id` (required): YouTube playlist ID
-- `max_results` (optional): Number of videos (1-50, default: 20)
-
-### Analytics Tools
-
-### 9. `track_video_metrics`
-Track how a video's metrics change over time. Returns historical view/like/comment counts.
-
-**Parameters:**
-- `video_id` (required): YouTube video ID
-
-### 10. `monitor_growth_patterns`
-Monitor growth patterns (views, likes, comments). Returns calculated growth rates.
-
-**Parameters:**
-- `video_id` (required): YouTube video ID
-
-### 11. `identify_viral_moments`
-Identify viral moments where metrics spiked.
-
-**Parameters:**
-- `video_id` (required): YouTube video ID
-
-### 12. `compare_video_performance`
-Compare video performance at different stages (e.g. now vs 2 weeks ago).
-
-**Parameters:**
-- `video_id` (required): YouTube video ID
-
-### 13. `predict_video_performance`
-Predict future performance based on trends.
-
-**Parameters:**
-- `video_id` (required): YouTube video ID
-- `days_ahead` (optional): Days to predict (default: 7)
-
-### Channel Comparison Tools
-
-### 14. `compare_channels`
-Compare multiple YouTube channels side-by-side with detailed metrics.
-
-**Parameters:**
-- `channel_ids` (required): Array of 2-5 YouTube channel IDs
-
-### 15. `analyze_content_strategy`
-Analyze a channel's content strategy including posting frequency and engagement patterns.
-
-**Parameters:**
-- `channel_id` (required): YouTube channel ID
-
-### 16. `benchmark_performance`
-Benchmark a target channel's performance against competitors.
-
-**Parameters:**
-- `target_channel_id` (required): Your channel ID
-- `competitor_channel_ids` (required): Array of competitor channel IDs
-
-### 17. `identify_competitive_advantages`
-Identify competitive advantages and weaknesses compared to other channels.
-
-**Parameters:**
-- `channel_id` (required): Channel to analyze
-- `comparison_channel_ids` (required): Array of channels to compare against
-
-### 18. `track_market_share`
-Track market share and audience distribution across multiple channels.
-
-**Parameters:**
-- `channel_ids` (required): Array of YouTube channel IDs
-
-## API Quota Information
-
-YouTube Data API has daily quota limits:
-- **Free tier**: 10,000 units per day
-- Each operation costs different units (typically 1-100)
-- Monitor usage in Google Cloud Console
-
-**Cost per operation (approximate):**
-- `get_video_info`: 1 unit
-- `get_video_transcript`: 0 units (uses different API)
-- `get_video_comments`: 1 unit
-- `search_videos`: 100 units
-- `get_channel_info`: 1 unit
-- `get_trending_videos`: 1 unit
-- Analytics Tools (`track_video_metrics`, etc.): 1 unit each
-- Channel Comparison Tools: 1-2 units per channel
+---
 
 ## Examples
 
-See the `examples/` directory for testing scripts:
+The `examples/` directory contains test scripts organized by feature:
 
-### Basic Examples (`examples/basic/`)
-- `individual_examples.py` - Test individual tools
-- `demo_client.py` - Complete demonstration
-- `quick_test.py` - Quick functionality test
-- `interactive_demo.py` - Interactive demo
-
-### Video Analytics (`examples/video-analytics/`)
-- `test_analytics.py` - Test analytics tools
-- Advanced metrics tracking and analysis
-
-### Channel Comparison (`examples/channel-comparison/`)
-- `individual_examples.py` - Test individual tools
-- `demo_scenarios.py` - Complete demonstration
-- `quick_test.py` - Quick functionality test
-- Compare channels, analyze strategies, benchmark performance
-
-### Usage
+| Folder | Description | README |
+|--------|-------------|--------|
+| `examples/basic/` | Core tools (video info, transcripts, search) | [View README](examples/basic/README.md) |
+| `examples/video-analytics/` | Analytics tools (metrics, growth, predictions) | [View README](examples/video-analytics/README.md) |
+| `examples/channel-comparison/` | Comparison tools (benchmark, market share) | [View README](examples/channel-comparison/README.md) |
 
 ```bash
-# Run all basic demos
+# Run basic demos
 python examples/basic/demo_client.py
 
-# Test specific tool
-python examples/basic/individual_examples.py video
-
-# Test analytics
+# Test video analytics
 python examples/video-analytics/test_analytics.py all
 
 # Test channel comparison
-python examples/channel-comparison/individual_examples.py all
-
-# Run demo scenarios
 python examples/channel-comparison/demo_scenarios.py
-
-# Interactive mode
-python examples/basic/interactive_demo.py
 ```
+
+---
+
+## API Quota
+
+YouTube Data API has daily quota limits:
+
+- **Free tier:** 10,000 units per day
+- **Search operations:** 100 units each
+- **Other operations:** 1 unit each
+
+Monitor usage in [Google Cloud Console](https://console.cloud.google.com/apis/dashboard).
+
+---
 
 ## Troubleshooting
 
-### Error: "YOUTUBE_API_KEY environment variable is required"
-**Solution:** Create `.env` file with your API key or set it in environment
+| Error | Solution |
+|-------|----------|
+| "YOUTUBE_API_KEY not configured" | Create `.env` file with your API key |
+| "quotaExceeded" | Wait 24 hours or request quota increase |
+| "Video not found" | Check video ID and ensure video is public |
+| "Transcripts disabled" | Video doesn't have captions available |
+| "Connection closed" | Check server logs for errors |
 
-### Error: "Transcripts are disabled for this video"
-**Solution:** Some videos don't have captions. Try a different video.
-
-### Error: "quotaExceeded"
-**Solution:** You've hit the daily API quota. Wait 24 hours or request quota increase.
-
-### Error: "Video not found"
-**Solution:** Check video ID is correct and video is public/available
-
-## License
-
-MIT License - see LICENSE file for details
+---
 
 ## Resources
 
 - [YouTube Data API Documentation](https://developers.google.com/youtube/v3)
 - [MCP Documentation](https://modelcontextprotocol.io)
 - [YouTube Transcript API](https://github.com/jdepoix/youtube-transcript-api)
+
+---
+
+## License
+
+MIT License - see LICENSE file for details.
