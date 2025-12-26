@@ -1,6 +1,10 @@
 # YouTube MCP Server
 
+![YouTube MCP Banner](./resources/header-banner.png)
+
 A powerful [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that provides AI assistants with comprehensive access to YouTube data — video metadata, transcripts, comments, channel analytics, and competitive analysis.
+
+> 📺 **New to MCP?** Watch our [Introduction to YouTube MCP](./resources/YouTube_MCP__The_AI_Toolkit.mp4) video to learn how it works!
 
 ## What is YouTube MCP?
 
@@ -52,6 +56,15 @@ YouTube MCP is an MCP server that enables AI assistants like Claude, Cursor, and
 ### Report Generation (2 tools)
 - Generate comprehensive channel reports
 - Generate detailed video performance reports
+
+### Framework Integration
+Want to use YouTube MCP with **LangChain**, **LlamaIndex**, or other AI frameworks?
+
+See the [Framework Integration Guide](./examples/framework-integration/README.md) for:
+- Creating LangChain/LlamaIndex tools from MCP
+- Building RAG systems with video transcripts
+- Multi-video Q&A and research assistants
+- Content creation agents and course builders
 
 ---
 
