@@ -36,11 +36,11 @@ YouTube MCP is an MCP server that enables AI assistants like Claude, Cursor, and
 - **Playlists** — Access playlist contents
 
 ### Video Analytics (5 tools)
-- Track metrics over time
-- Monitor growth patterns
-- Identify viral moments
-- Compare performance stages
-- Predict future views
+- Get video metrics with engagement rates
+- Analyze engagement quality
+- Calculate performance scores
+- Compare multiple videos
+- Analyze content quality signals
 
 ### Channel Comparison (5 tools)
 - Compare multiple channels

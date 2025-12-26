@@ -1,6 +1,6 @@
 # Video Analytics Tools
 
-This folder demonstrates the **Video Analytics Tools** integrated into the YouTube MCP server. These tools allow you to track video metrics over time, monitor growth patterns, identify viral moments, compare performance at different stages, and predict future performance.
+This folder demonstrates the **Video Analytics Tools** integrated into the YouTube MCP server. These tools analyze video performance using **real current data** from the YouTube API — no simulated or historical data.
 
 ## Prerequisites
 
@@ -22,143 +22,145 @@ This folder demonstrates the **Video Analytics Tools** integrated into the YouTu
 
 This section describes all **5 Video Analytics Tools** available in the YouTube MCP server.
 
-### 1. `track_video_metrics`
+### 1. `get_video_analytics`
 
-Track how a video's metrics (views, likes, comments) change over time.
+Get current video metrics with calculated engagement rates.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `video_id` | string | Yes | YouTube video ID |
+| `video_id` | string | Yes | YouTube video ID or URL |
 
 **Returns:**
-- `video_id`: The video identifier
-- `title`: Video title
-- `snapshots`: Array of historical data points with timestamps, views, likes, comments
+- Video title, channel, published date, duration
+- Views, likes, comments (raw and formatted)
+- `like_rate`: Percentage of viewers who liked
+- `comment_rate`: Percentage of viewers who commented
+- `engagement_score`: Weighted engagement score
 
 **Use Cases:**
-- Monitor your video's performance over days/weeks
-- See how metrics evolved since publication
-- Track the impact of promotion campaigns
+- Get a complete snapshot of video performance
+- Understand engagement rates at a glance
+- Collect data for reports
+
+---
+
+### 2. `analyze_video_engagement`
+
+Analyze engagement quality with ratings and interpretation.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `video_id` | string | Yes | YouTube video ID or URL |
+
+**Returns:**
+- Engagement analysis with ratings:
+  - `like_rating`: Excellent / Good / Average / Below Average
+  - `comment_rating`: High / Moderate / Low Engagement
+- Human-readable interpretation
+
+**Rating Criteria:**
+| Like Rate | Rating |
+|-----------|--------|
+| ≥ 5% | Excellent |
+| ≥ 3% | Good |
+| ≥ 1% | Average |
+| < 1% | Below Average |
+
+**Use Cases:**
+- Quickly assess video quality
+- Compare engagement across videos
+- Identify content that resonates with audiences
+
+---
+
+### 3. `get_video_performance_score`
+
+Calculate a 0-100 performance score with letter grade.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `video_id` | string | Yes | YouTube video ID or URL |
+
+**Returns:**
+- `performance_score`: 0-100 score
+- `grade`: A, B, C, D, or F
+- `summary`: Performance explanation
+- Detailed metrics breakdown
+
+**Grading Scale:**
+| Score | Grade | Meaning |
+|-------|-------|---------|
+| 80-100 | A | Exceptional performance |
+| 60-79 | B | Good, above average |
+| 40-59 | C | Average performance |
+| 20-39 | D | Below average |
+| 0-19 | F | Poor performance |
+
+**Use Cases:**
+- Get a quick performance assessment
+- Compare videos using a standardized score
+- Track content quality over time
+
+---
+
+### 4. `compare_videos`
+
+Compare multiple videos side-by-side with rankings.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `video_ids` | array | Yes | List of 2-10 video IDs to compare |
+
+**Returns:**
+- Videos ranked by engagement score
+- Highlights:
+  - Best engagement
+  - Most views
+  - Best like rate
+- Side-by-side metrics for each video
+
+**Use Cases:**
+- Compare your videos against each other
+- Benchmark against competitor videos
+- Identify your best-performing content
 
 **Example:**
 ```bash
-python examples/video-analytics/test_analytics.py metrics
-python examples/video-analytics/test_analytics.py metrics dQw4w9WgXcQ
+# Compare 3 videos
+python examples/video-analytics/test_analytics.py compare video1_id video2_id video3_id
 ```
 
 ---
 
-### 2. `monitor_growth_patterns`
+### 5. `analyze_video_potential`
 
-Calculate growth rates for views, likes, and comments over the analysis period.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `video_id` | string | Yes | YouTube video ID |
-
-**Returns:**
-- `days`: Number of days in the analysis period
-- `views_growth_rate`: Daily view growth percentage
-- `total_views_growth`: Total view growth percentage
-- `likes_growth_rate`: Daily like growth percentage
-- `total_likes_growth`: Total like growth percentage
-- `views_per_day`: Average new views per day
-- `likes_per_day`: Average new likes per day
-
-**Use Cases:**
-- Understand if your video is growing or declining
-- Compare growth rates across your videos
-- Identify which content resonates best with your audience
-
-**Example:**
-```bash
-python examples/video-analytics/test_analytics.py growth
-python examples/video-analytics/test_analytics.py growth dQw4w9WgXcQ
-```
-
----
-
-### 3. `identify_viral_moments`
-
-Detect periods when a video experienced viral growth (rapid spikes in views).
+Analyze content quality signals and audience resonance.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `video_id` | string | Yes | YouTube video ID |
+| `video_id` | string | Yes | YouTube video ID or URL |
 
 **Returns:**
-- `viral_moments`: Array of detected viral periods with:
-  - `timestamp`: When the spike occurred
-  - `views_per_hour`: Rate of views during the spike
-  - `total_views`: Total views at that moment
+- Current metrics
+- `quality_signals`: Positive indicators (e.g., "High like-to-view ratio")
+- `areas_for_improvement`: Concerns (e.g., "Low comment rate")
+- `overall_assessment`: Strong / Average / Needs Improvement
 
-**Viral Detection Criteria:** Views per hour > 10,000
+**Quality Signals Detected:**
+- High like-to-view ratio (≥5%)
+- High comment rate (≥0.5%)
+- Viral reach (>1M views)
+- Strong reach (>100K views)
 
-**Use Cases:**
-- Identify when your video got shared on social media
-- Detect external traffic sources (Reddit, Twitter, etc.)
-- Understand what triggers viral growth
-
-**Example:**
-```bash
-python examples/video-analytics/test_analytics.py viral
-python examples/video-analytics/test_analytics.py viral dQw4w9WgXcQ
-```
-
----
-
-### 4. `compare_video_performance`
-
-Compare a video's current performance against its past performance (e.g., now vs. 14 days ago).
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `video_id` | string | Yes | YouTube video ID |
-
-**Returns:**
-- `current`: Current snapshot (views, likes, comments)
-- `past`: Snapshot from 14 days ago
-- `growth`: Calculated growth between the two periods
-- `performance_summary`: Text summary of performance
+**Concerns Flagged:**
+- Low like-to-view ratio (<1%)
+- Low comment rate (<0.05%)
+- Limited reach (<1K views)
 
 **Use Cases:**
-- See how much your video has grown in the last 2 weeks
-- Evaluate the effectiveness of recent promotions
-- Compare old vs. new performance metrics
-
-**Example:**
-```bash
-python examples/video-analytics/test_analytics.py compare
-python examples/video-analytics/test_analytics.py compare dQw4w9WgXcQ
-```
-
----
-
-### 5. `predict_video_performance`
-
-Predict future view counts based on current growth trends (linear projection).
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `video_id` | string | Yes | YouTube video ID |
-| `days_ahead` | number | No | Days to predict (default: 7) |
-
-**Returns:**
-- `predictions`: Array of predicted view counts for each day:
-  - `days_from_now`: Day number (1, 2, 3...)
-  - `predicted_views`: Estimated view count
-  - `predicted_views_formatted`: Human-readable format (e.g., "1.2M")
-
-**Use Cases:**
-- Estimate when you'll hit a milestone (100K, 1M views)
-- Set realistic expectations for video performance
-- Plan content strategy based on projections
-
-**Example:**
-```bash
-python examples/video-analytics/test_analytics.py predict
-python examples/video-analytics/test_analytics.py predict dQw4w9WgXcQ
-```
+- Understand what's working in your content
+- Get actionable improvement suggestions
+- Evaluate video quality before promotion
 
 ---
 
@@ -197,13 +199,6 @@ Video ID: dQw4w9WgXcQ
 3. Find your video in the list.
 4. The Video ID is visible in the video details or URL.
 
-### Finding Competitor Video IDs
-
-1. Go to the competitor's YouTube channel.
-2. Click on any of their videos.
-3. Copy the Video ID from the URL using Method 1.
-4. Save the IDs for tracking and comparison.
-
 ---
 
 ## Available Scripts
@@ -221,68 +216,81 @@ python examples/video-analytics/test_analytics.py <command> [video_id]
 
 | Command | Description |
 |---------|-------------|
-| `metrics` | Track historical metrics (views/likes/comments) |
-| `growth` | Calculate daily growth rates and total growth |
-| `viral` | Identify viral moments (spikes in view rate) |
-| `compare` | Compare current performance vs. 14 days ago |
-| `predict` | Predict future views for the next 7 days |
-| `all` | **(Default)** Run all tests sequentially |
+| `analytics` | Get current metrics with engagement rates |
+| `engagement` | Analyze engagement quality with ratings |
+| `score` | Calculate performance score (0-100) |
+| `compare` | Compare multiple videos |
+| `potential` | Analyze content quality signals |
+| `all` | Run all tests sequentially |
 
 **Examples:**
 ```bash
-# Run all analytics tests
-python examples/video-analytics/test_analytics.py all
+# Get video analytics
+python examples/video-analytics/test_analytics.py analytics dQw4w9WgXcQ
 
-# Run specific analytics tool
-python examples/video-analytics/test_analytics.py metrics
-python examples/video-analytics/test_analytics.py growth
-python examples/video-analytics/test_analytics.py viral
-python examples/video-analytics/test_analytics.py compare
-python examples/video-analytics/test_analytics.py predict
+# Analyze engagement
+python examples/video-analytics/test_analytics.py engagement dQw4w9WgXcQ
 
-# Run with a specific Video ID
-python examples/video-analytics/test_analytics.py all dQw4w9WgXcQ
-python examples/video-analytics/test_analytics.py metrics dQw4w9WgXcQ
+# Get performance score
+python examples/video-analytics/test_analytics.py score dQw4w9WgXcQ
+
+# Compare videos
+python examples/video-analytics/test_analytics.py compare dQw4w9WgXcQ abc123 xyz789
+
+# Analyze potential
+python examples/video-analytics/test_analytics.py potential dQw4w9WgXcQ
 ```
 
 ---
 
 ## How It Works
 
-1. **Client**: The script connects to the MCP server using standard I/O.
-2. **Request**: Sends a tool call (e.g., `track_video_metrics`) with the `video_id`.
-3. **Server**: 
-   - Fetches current live data from the YouTube API.
-   - Simulates historical data points (for demonstration purposes).
-   - Calculates analytics metrics.
-   - Returns results in JSON format.
-4. **Output**: The script formats the JSON into a readable console report.
+All analytics tools use **real current data** from the YouTube Data API:
 
-> **Note:** Historical data is simulated based on current metrics. For true historical tracking, you would need to store snapshots in a database over time.
+1. **Client**: Connects to the MCP server.
+2. **Request**: Sends tool call with video ID.
+3. **Server**: 
+   - Fetches current video data via YouTube API
+   - Calculates engagement metrics (like rate, comment rate)
+   - Applies performance scoring algorithms
+4. **Response**: Returns analysis in JSON format.
+
+> **Note:** All data is real and fetched live from YouTube. There is no simulated or historical data. For historical tracking, you would need to store snapshots over time in a database.
 
 ---
 
 ## Practical Use Cases
 
 ### For Content Creators
-- Track which videos are growing fastest
-- Identify when videos go viral
-- Predict milestone achievements
+- Analyze which videos perform best
+- Understand engagement patterns
+- Get actionable improvement suggestions
 
 ### For Marketing Teams
-- Measure campaign impact on video performance
-- Track ROI on promotional efforts
-- Report on content performance trends
+- Compare campaign video performance
+- Benchmark against competitors
+- Generate performance reports
 
 ### For Researchers
-- Study video growth patterns
-- Analyze viral content characteristics
-- Track information spread
+- Study video engagement patterns
+- Analyze content quality metrics
+- Compare videos across categories
 
-### For Investors
-- Evaluate influencer growth trajectories
-- Assess content creator potential
-- Monitor portfolio creator performance
+---
+
+## API Quota Information
+
+Each tool call uses approximately **1-2 API quota units**:
+
+| Tool | Quota Cost |
+|------|------------|
+| `get_video_analytics` | 1 unit |
+| `analyze_video_engagement` | 1 unit |
+| `get_video_performance_score` | 1 unit |
+| `compare_videos` | 1 unit per video |
+| `analyze_video_potential` | 1 unit |
+
+**Daily Quota:** 10,000 units (free tier)
 
 ---
 
@@ -290,7 +298,6 @@ python examples/video-analytics/test_analytics.py metrics dQw4w9WgXcQ
 
 | Error | Solution |
 |-------|----------|
-| "YOUTUBE_API_KEY not configured" | Create a `.env` file with your API key |
 | "Video not found" | Verify the Video ID is correct and video is public |
+| "YOUTUBE_API_KEY not configured" | Create a `.env` file with your API key |
 | "quotaExceeded" | Wait 24 hours or request quota increase |
-| "No data available" | The video may be too new for meaningful analytics |
