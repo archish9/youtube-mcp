@@ -4,7 +4,9 @@
 
 A powerful [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that provides AI assistants with comprehensive access to YouTube data — video metadata, transcripts, comments, channel analytics, and competitive analysis.
 
-> 📺 **New to MCP?** Watch our [Introduction to YouTube MCP](./resources/YouTube_MCP__The_AI_Toolkit.mp4) video to learn how it works!
+> 📺 **New to MCP?** Watch our introduction video to learn how it works!
+>
+> [![Watch the video](https://img.youtube.com/vi/2_XWKaGjuC0/maxresdefault.jpg)](https://www.youtube.com/watch?v=2_XWKaGjuC0)
 
 ## What is YouTube MCP?
 
