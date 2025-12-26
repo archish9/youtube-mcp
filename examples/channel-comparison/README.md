@@ -10,11 +10,14 @@ This directory demonstrates the **Channel Comparison Tools** integrated into the
    pip install -e .
    ```
 
-2. **Configure API Key**:
-   Ensure you have a `.env` file in the project root with your YouTube Data API key:
+2. **Configure API Key and Channel ID**:
+   Create a `.env` file in the project root:
    ```bash
    YOUTUBE_API_KEY=your_api_key_here
+   DEFAULT_CHANNEL_ID=your_channel_id_here
    ```
+   
+   Get your channel ID from: https://www.youtube.com/account_advanced
 
 ## Available Scripts
 
@@ -29,7 +32,7 @@ python quick_test.py
 Test individual tools with command-line arguments.
 
 ```bash
-# Run all tests
+# Run all tests (will prompt for competitor channel IDs if not provided)
 python examples/channel-comparison/individual_examples.py
 
 # Run specific test
@@ -39,6 +42,11 @@ python examples/channel-comparison/individual_examples.py benchmark
 python examples/channel-comparison/individual_examples.py advantages
 python examples/channel-comparison/individual_examples.py market
 ```
+
+**Note:** The script will:
+- Use your `DEFAULT_CHANNEL_ID` from `.env` as your channel
+- Prompt you to enter competitor channel IDs if not provided via command line
+- You can also pass competitor IDs as arguments: `python individual_examples.py compare UCX6OQ3DkcsbYNE6H8uQQuVA UC-lHJZR3Gqxm24_Vd_AJ5Yw`
 
 ### 3. demo_scenarios.py
 Complete demonstration of all tools with practical examples.
