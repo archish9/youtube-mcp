@@ -21,6 +21,17 @@ from dotenv import load_dotenv
 project_root = Path(__file__).parent.parent.parent
 load_dotenv(project_root / ".env")
 
+# Get default channel ID
+DEFAULT_CHANNEL_ID = os.getenv("DEFAULT_CHANNEL_ID")
+if not DEFAULT_CHANNEL_ID or DEFAULT_CHANNEL_ID == "your_channel_id_here":
+    DEFAULT_CHANNEL_ID = "UCX6OQ3DkcsbYNE6H8uQQuVA"  # Fallback to MrBeast
+
+# Test channels
+TEST_CHANNELS = [
+    DEFAULT_CHANNEL_ID,
+    "UC-lHJZR3Gqxm24_Vd_AJ5Yw",  # PewDiePie
+]
+
 venv_python = project_root / "venv" / "Scripts" / "python.exe"
 if not venv_python.exists():
     venv_python = project_root / "venv" / "bin" / "python"
@@ -37,12 +48,6 @@ SERVER_PARAMS = StdioServerParameters(
         "PYTHONPATH": str(project_root / "src")
     }
 )
-
-# Test channels
-TEST_CHANNELS = [
-    "UCX6OQ3DkcsbYNE6H8uQQuVA",  # MrBeast
-    "UC-lHJZR3Gqxm24_Vd_AJ5Yw",  # PewDiePie
-]
 
 
 async def quick_test():

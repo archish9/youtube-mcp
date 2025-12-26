@@ -94,111 +94,12 @@ def format_number(num: int) -> str:
         return f"{num / 1_000:.1f}K"
     return str(num)
 
-# --- Video Analytics Logic ---
-from datetime import datetime
-import json
-import asyncio
-
-def calculate_growth_rate_logic(snapshots):
-    """Calculate growth rate between snapshots"""
-    if len(snapshots) < 2:
-        return None
-    
-    first = snapshots[0]
-    last = snapshots[-1]
-    
-    # We need to handle potential string timestamps or datetime objects
-    # Assuming ISO format strings for simplicity in this port
+# --- Video Analytics Helper ---
+async def _get_video_data(video_id: str):
+    """Fetch current video data for analytics"""
     try:
-        ts_last = datetime.fromisoformat(last['timestamp'])
-        ts_first = datetime.fromisoformat(first['timestamp'])
-    except:
-        return None
-
-    time_diff = (ts_last - ts_first).days
-    
-    if time_diff == 0:
-        time_diff = 1 
-    
-    first_views = int(first['views']) if int(first['views']) > 0 else 1
-    first_likes = int(first['likes']) if int(first['likes']) > 0 else 1
-
-    last_views = int(last['views'])
-    last_likes = int(last['likes'])
-
-    view_growth = ((last_views - first_views) / first_views) * 100
-    like_growth = ((last_likes - first_likes) / first_likes) * 100
-    
-    return {
-        'days': time_diff,
-        'views_growth_rate': view_growth / time_diff,
-        'total_views_growth': view_growth,
-        'likes_growth_rate': like_growth / time_diff,
-        'total_likes_growth': like_growth,
-        'views_per_day': (last_views - first_views) / time_diff,
-        'likes_per_day': (last_likes - first_likes) / time_diff
-    }
-
-def identify_viral_moments_logic(snapshots):
-    """Identify when video went viral"""
-    viral_moments = []
-    
-    for i in range(1, len(snapshots)):
-        prev = snapshots[i-1]
-        curr = snapshots[i]
-        
-        try:
-            ts_curr = datetime.fromisoformat(curr['timestamp'])
-            ts_prev = datetime.fromisoformat(prev['timestamp'])
-        except:
-            continue
-
-        time_diff_hours = (ts_curr - ts_prev).total_seconds() / 3600
-        
-        if time_diff_hours > 0:
-            views_curr = int(curr['views'])
-            views_prev = int(prev['views'])
-            
-            views_per_hour = (views_curr - views_prev) / time_diff_hours
-            
-            if views_per_hour > 10000:
-                viral_moments.append({
-                    'timestamp': curr['timestamp'],
-                    'views_per_hour': views_per_hour,
-                    'total_views': views_curr
-                })
-    
-    return viral_moments
-
-def predict_future_views_logic(snapshots, days_ahead=7):
-    """Simple linear prediction"""
-    if len(snapshots) < 2:
-        return None
-    
-    growth = calculate_growth_rate_logic(snapshots)
-    if not growth:
-        return None
-    
-    current_views = int(snapshots[-1]['views'])
-    daily_growth = growth['views_per_day']
-    
-    predictions = []
-    for day in range(1, days_ahead + 1):
-        predicted_views = current_views + (daily_growth * day)
-        predictions.append({
-            'days_from_now': day,
-            'predicted_views': int(predicted_views),
-            'predicted_views_formatted': format_number(int(predicted_views))
-        })
-    
-    return predictions
-
-async def _get_video_snapshots(video_id: str):
-    """Helper to fetch real data and simulate history for analytics"""
-    try:
-        # 1. Fetch current data
         request = get_youtube_client().videos().list(
-            part="snippet,statistics",
+            part="snippet,statistics,contentDetails",
             id=video_id
         )
         response = request.execute()
@@ -207,40 +108,64 @@ async def _get_video_snapshots(video_id: str):
             return None
         
         video = response["items"][0]
-        current_stats = video.get("statistics", {})
+        stats = video.get("statistics", {})
         snippet = video["snippet"]
         
-        current_snapshot = {
-            "timestamp": datetime.now().isoformat(),
+        views = int(stats.get("viewCount", 0))
+        likes = int(stats.get("likeCount", 0))
+        comments = int(stats.get("commentCount", 0))
+        
+        # Calculate engagement metrics
+        like_rate = (likes / views * 100) if views > 0 else 0
+        comment_rate = (comments / views * 100) if views > 0 else 0
+        engagement_score = (like_rate * 0.7) + (comment_rate * 0.3 * 10)  # Weighted score
+        
+        return {
             "video_id": video_id,
             "title": snippet["title"],
-            "views": int(current_stats.get("viewCount", 0)),
-            "likes": int(current_stats.get("likeCount", 0)),
-            "comments": int(current_stats.get("commentCount", 0))
+            "channel": snippet["channelTitle"],
+            "channel_id": snippet["channelId"],
+            "published_at": snippet["publishedAt"],
+            "duration": video["contentDetails"]["duration"],
+            "views": views,
+            "views_formatted": format_number(views),
+            "likes": likes,
+            "likes_formatted": format_number(likes),
+            "comments": comments,
+            "comments_formatted": format_number(comments),
+            "like_rate": round(like_rate, 2),
+            "comment_rate": round(comment_rate, 3),
+            "engagement_score": round(engagement_score, 2),
+            "thumbnail": snippet["thumbnails"]["high"]["url"],
+            "url": f"https://youtube.com/watch?v={video_id}"
         }
-        
-        # 2. Simulate historical data (same as before)
-        snapshots = [
-            {
-                **current_snapshot,
-                "timestamp": (datetime.now() - timedelta(days=14)).isoformat(),
-                "views": int(current_snapshot["views"] * 0.3),
-                "likes": int(current_snapshot["likes"] * 0.3),
-                "comments": int(current_snapshot["comments"] * 0.3)
-            },
-            {
-                **current_snapshot,
-                "timestamp": (datetime.now() - timedelta(days=7)).isoformat(),
-                "views": int(current_snapshot["views"] * 0.6),
-                "likes": int(current_snapshot["likes"] * 0.6),
-                "comments": int(current_snapshot["comments"] * 0.6)
-            },
-            current_snapshot
-        ]
-        return snapshots
-    except:
+    except Exception as e:
         return None
+
+def _calculate_performance_rating(like_rate: float, comment_rate: float) -> dict:
+    """Calculate performance rating based on engagement"""
+    if like_rate >= 5:
+        like_rating = "Excellent"
+    elif like_rate >= 3:
+        like_rating = "Good"
+    elif like_rate >= 1:
+        like_rating = "Average"
+    else:
+        like_rating = "Below Average"
+    
+    if comment_rate >= 0.5:
+        comment_rating = "High Engagement"
+    elif comment_rate >= 0.1:
+        comment_rating = "Moderate Engagement"
+    else:
+        comment_rating = "Low Engagement"
+    
+    return {
+        "like_rating": like_rating,
+        "comment_rating": comment_rating
+    }
 # -----------------------------
+
 
 @server.list_tools()
 async def handle_list_tools() -> list[types.Tool]:
@@ -407,57 +332,60 @@ async def handle_list_tools() -> list[types.Tool]:
             }
         ),
         types.Tool(
-            name="track_video_metrics",
-            description="Track how a video's metrics change over days/weeks/months.",
+            name="get_video_analytics",
+            description="Get current video metrics with engagement analysis (views, likes, comments, engagement rates).",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "video_id": {"type": "string", "description": "YouTube video ID"}
+                    "video_id": {"type": "string", "description": "YouTube video ID or URL"}
                 },
                 "required": ["video_id"]
             }
         ),
         types.Tool(
-            name="monitor_growth_patterns",
-            description="Monitor growth patterns (views, likes, comments).",
+            name="analyze_video_engagement",
+            description="Analyze a video's engagement quality based on like-to-view and comment-to-view ratios.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "video_id": {"type": "string", "description": "YouTube video ID"}
+                    "video_id": {"type": "string", "description": "YouTube video ID or URL"}
                 },
                 "required": ["video_id"]
             }
         ),
         types.Tool(
-            name="identify_viral_moments",
-            description="Identify viral moments where metrics spiked.",
+            name="get_video_performance_score",
+            description="Calculate a performance score for a video based on current engagement metrics.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "video_id": {"type": "string", "description": "YouTube video ID"}
+                    "video_id": {"type": "string", "description": "YouTube video ID or URL"}
                 },
                 "required": ["video_id"]
             }
         ),
         types.Tool(
-            name="compare_video_performance",
-            description="Compare video performance at different stages (e.g. now vs 2 weeks ago).",
+            name="compare_videos",
+            description="Compare multiple videos side-by-side with metrics and engagement analysis.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "video_id": {"type": "string", "description": "YouTube video ID"}
+                    "video_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of video IDs to compare (2-10 videos)"
+                    }
                 },
-                "required": ["video_id"]
+                "required": ["video_ids"]
             }
         ),
         types.Tool(
-            name="predict_video_performance",
-            description="Predict future performance based on trends.",
+            name="analyze_video_potential",
+            description="Analyze a video's content quality signals and audience resonance based on current metrics.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "video_id": {"type": "string", "description": "YouTube video ID"},
-                    "days_ahead": {"type": "number", "description": "Days to predict", "default": 7}
+                    "video_id": {"type": "string", "description": "YouTube video ID or URL"}
                 },
                 "required": ["video_id"]
             }
@@ -928,66 +856,173 @@ async def handle_call_tool(
                 text=json.dumps(result, indent=2)
             )]
         
-        elif name == "track_video_metrics":
+        elif name == "get_video_analytics":
             video_id = extract_video_id(arguments.get("video_id"))
-            snapshots = await _get_video_snapshots(video_id)
+            data = await _get_video_data(video_id)
             
-            if not snapshots:
-                 return [types.TextContent(type="text", text=f"Video not found: {video_id}")]
-
-            # Return just the raw metrics history
-            return [types.TextContent(
-                type="text",
-                text=json.dumps({
-                    "video_id": video_id,
-                    "title": snapshots[-1]["title"],
-                    "current_views": snapshots[-1]["views"],
-                    "history": snapshots 
-                }, indent=2)
-            )]
-
-        elif name == "monitor_growth_patterns":
-            video_id = extract_video_id(arguments.get("video_id"))
-            snapshots = await _get_video_snapshots(video_id)
-            if not snapshots: return [types.TextContent(type="text", text=f"Video not found: {video_id}")]
-
-            growth = calculate_growth_rate_logic(snapshots)
-            return [types.TextContent(type="text", text=json.dumps(growth, indent=2))]
-
-        elif name == "identify_viral_moments":
-            video_id = extract_video_id(arguments.get("video_id"))
-            snapshots = await _get_video_snapshots(video_id)
-            if not snapshots: return [types.TextContent(type="text", text=f"Video not found: {video_id}")]
-
-            viral = identify_viral_moments_logic(snapshots)
-            return [types.TextContent(type="text", text=json.dumps(viral, indent=2))]
+            if not data:
+                return [types.TextContent(type="text", text=f"Video not found: {video_id}")]
             
-        elif name == "compare_video_performance":
-             video_id = extract_video_id(arguments.get("video_id"))
-             snapshots = await _get_video_snapshots(video_id)
-             if not snapshots: return [types.TextContent(type="text", text=f"Video not found: {video_id}")]
-             
-             # Compare current vs 14 days ago (first snapshot in our simulation)
-             current = snapshots[-1]
-             past = snapshots[0]
-             
-             comparison = {
-                 "period": "14 days",
-                 "views_change": int(current["views"]) - int(past["views"]),
-                 "likes_change": int(current["likes"]) - int(past["likes"]),
-                 "comments_change": int(current["comments"]) - int(past["comments"])
-             }
-             return [types.TextContent(type="text", text=json.dumps(comparison, indent=2))]
+            return [types.TextContent(type="text", text=json.dumps(data, indent=2))]
 
-        elif name == "predict_video_performance":
+        elif name == "analyze_video_engagement":
             video_id = extract_video_id(arguments.get("video_id"))
-            days_ahead = int(arguments.get("days_ahead", 7))
+            data = await _get_video_data(video_id)
             
-            snapshots = await _get_video_snapshots(video_id)
-            if not snapshots: return [types.TextContent(type="text", text=f"Video not found: {video_id}")]
+            if not data:
+                return [types.TextContent(type="text", text=f"Video not found: {video_id}")]
+            
+            rating = _calculate_performance_rating(data["like_rate"], data["comment_rate"])
+            
+            result = {
+                "video_id": video_id,
+                "title": data["title"],
+                "views": data["views_formatted"],
+                "engagement_analysis": {
+                    "like_rate": f"{data['like_rate']}%",
+                    "like_rating": rating["like_rating"],
+                    "comment_rate": f"{data['comment_rate']}%",
+                    "comment_rating": rating["comment_rating"],
+                    "engagement_score": data["engagement_score"]
+                },
+                "interpretation": f"This video has {rating['like_rating'].lower()} like engagement and {rating['comment_rating'].lower()}."
+            }
+            
+            return [types.TextContent(type="text", text=json.dumps(result, indent=2))]
 
-            predictions = predict_future_views_logic(snapshots, days_ahead)
-            return [types.TextContent(type="text", text=json.dumps(predictions, indent=2))]
+        elif name == "get_video_performance_score":
+            video_id = extract_video_id(arguments.get("video_id"))
+            data = await _get_video_data(video_id)
+            
+            if not data:
+                return [types.TextContent(type="text", text=f"Video not found: {video_id}")]
+            
+            # Calculate performance score (0-100)
+            score = min(data["engagement_score"] * 10, 100)
+            
+            if score >= 80:
+                grade = "A"
+                summary = "Exceptional performance. This video resonates very well with the audience."
+            elif score >= 60:
+                grade = "B"
+                summary = "Good performance. Above average engagement from viewers."
+            elif score >= 40:
+                grade = "C"
+                summary = "Average performance. Typical engagement levels."
+            elif score >= 20:
+                grade = "D"
+                summary = "Below average. Consider improving content quality or targeting."
+            else:
+                grade = "F"
+                summary = "Poor performance. May need significant changes to content strategy."
+            
+            result = {
+                "video_id": video_id,
+                "title": data["title"],
+                "performance_score": round(score, 1),
+                "grade": grade,
+                "summary": summary,
+                "metrics": {
+                    "views": data["views_formatted"],
+                    "likes": data["likes_formatted"],
+                    "comments": data["comments_formatted"],
+                    "like_rate": f"{data['like_rate']}%",
+                    "comment_rate": f"{data['comment_rate']}%"
+                }
+            }
+            
+            return [types.TextContent(type="text", text=json.dumps(result, indent=2))]
+
+        elif name == "compare_videos":
+            video_ids = arguments.get("video_ids", [])
+            
+            if len(video_ids) < 2:
+                return [types.TextContent(type="text", text="Error: At least 2 videos required for comparison")]
+            
+            videos_data = []
+            for vid in video_ids[:10]:  # Limit to 10 videos
+                video_id = extract_video_id(vid)
+                data = await _get_video_data(video_id)
+                if data:
+                    videos_data.append(data)
+            
+            if len(videos_data) < 2:
+                return [types.TextContent(type="text", text="Error: Could not fetch data for enough videos")]
+            
+            # Sort by engagement score
+            videos_data.sort(key=lambda x: x["engagement_score"], reverse=True)
+            
+            # Find best performers
+            best_engagement = videos_data[0]
+            best_views = max(videos_data, key=lambda x: x["views"])
+            best_likes = max(videos_data, key=lambda x: x["like_rate"])
+            
+            result = {
+                "videos_compared": len(videos_data),
+                "ranking_by_engagement": [
+                    {
+                        "rank": i + 1,
+                        "title": v["title"],
+                        "video_id": v["video_id"],
+                        "views": v["views_formatted"],
+                        "engagement_score": v["engagement_score"]
+                    }
+                    for i, v in enumerate(videos_data)
+                ],
+                "highlights": {
+                    "best_engagement": {"title": best_engagement["title"], "score": best_engagement["engagement_score"]},
+                    "most_views": {"title": best_views["title"], "views": best_views["views_formatted"]},
+                    "best_like_rate": {"title": best_likes["title"], "like_rate": f"{best_likes['like_rate']}%"}
+                }
+            }
+            
+            return [types.TextContent(type="text", text=json.dumps(result, indent=2))]
+
+        elif name == "analyze_video_potential":
+            video_id = extract_video_id(arguments.get("video_id"))
+            data = await _get_video_data(video_id)
+            
+            if not data:
+                return [types.TextContent(type="text", text=f"Video not found: {video_id}")]
+            
+            # Analyze content quality signals
+            signals = []
+            concerns = []
+            
+            if data["like_rate"] >= 5:
+                signals.append("High like-to-view ratio indicates strong content resonance")
+            elif data["like_rate"] < 1:
+                concerns.append("Low like-to-view ratio suggests content may need improvement")
+            
+            if data["comment_rate"] >= 0.5:
+                signals.append("High comment rate shows active audience engagement")
+            elif data["comment_rate"] < 0.05:
+                concerns.append("Low comment rate - consider adding calls to action")
+            
+            if data["views"] > 1000000:
+                signals.append("Viral reach - video has achieved significant visibility")
+            elif data["views"] > 100000:
+                signals.append("Strong reach - video performing well")
+            elif data["views"] < 1000:
+                concerns.append("Limited reach - may need promotion or SEO optimization")
+            
+            result = {
+                "video_id": video_id,
+                "title": data["title"],
+                "channel": data["channel"],
+                "current_metrics": {
+                    "views": data["views_formatted"],
+                    "likes": data["likes_formatted"],
+                    "comments": data["comments_formatted"],
+                    "engagement_score": data["engagement_score"]
+                },
+                "quality_signals": signals if signals else ["No strong positive signals detected"],
+                "areas_for_improvement": concerns if concerns else ["No major concerns identified"],
+                "overall_assessment": "Strong" if len(signals) > len(concerns) else "Needs Improvement" if len(concerns) > len(signals) else "Average"
+            }
+            
+            return [types.TextContent(type="text", text=json.dumps(result, indent=2))]
+
 
         elif name == "compare_channels":
             channel_ids = arguments.get("channel_ids", [])

@@ -29,6 +29,30 @@ from dotenv import load_dotenv
 project_root = Path(__file__).parent.parent.parent
 load_dotenv(project_root / ".env")
 
+# Get default channel ID from environment or prompt user
+DEFAULT_CHANNEL_ID = os.getenv("DEFAULT_CHANNEL_ID")
+if not DEFAULT_CHANNEL_ID or DEFAULT_CHANNEL_ID == "your_channel_id_here":
+    print("\n" + "=" * 70)
+    print("DEFAULT_CHANNEL_ID not configured in .env file")
+    print("Please enter your YouTube channel ID:")
+    print("(Get it from: https://www.youtube.com/account_advanced)")
+    print("=" * 70)
+    DEFAULT_CHANNEL_ID = input("Your Channel ID: ").strip()
+    if not DEFAULT_CHANNEL_ID:
+        print("Error: Channel ID is required for comparison tools")
+        sys.exit(1)
+
+# Get competitor channel IDs from command line or prompt
+COMPETITOR_CHANNELS = []
+if len(sys.argv) > 2:
+    COMPETITOR_CHANNELS = sys.argv[2:]
+else:
+    print("\nEnter competitor channel IDs (comma-separated):")
+    print("Example: UCX6OQ3DkcsbYNE6H8uQQuVA,UC-lHJZR3Gqxm24_Vd_AJ5Yw")
+    competitor_input = input("Competitor IDs: ").strip()
+    if competitor_input:
+        COMPETITOR_CHANNELS = [c.strip() for c in competitor_input.split(",")]
+
 # Determine the correct Python executable
 venv_python = project_root / "venv" / "Scripts" / "python.exe"
 if not venv_python.exists():
@@ -51,12 +75,6 @@ SERVER_PARAMS = StdioServerParameters(
     }
 )
 
-# Example channel IDs
-DEFAULT_CHANNELS = [
-    "UCX6OQ3DkcsbYNE6H8uQQuVA",  # MrBeast
-    "UC-lHJZR3Gqxm24_Vd_AJ5Yw",  # PewDiePie
-]
-
 def format_number(num):
     """Format large numbers"""
     if num >= 1_000_000_000:
@@ -70,17 +88,23 @@ def format_number(num):
 
 async def test_compare():
     """Test compare_channels tool"""
+    if not COMPETITOR_CHANNELS:
+        print("Error: At least one competitor channel required for comparison")
+        return
+    
     print("=" * 70)
     print("Testing: compare_channels")
     print("=" * 70)
 
+    all_channels = [DEFAULT_CHANNEL_ID] + COMPETITOR_CHANNELS
+    
     async with stdio_client(SERVER_PARAMS) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
             
             result = await session.call_tool(
                 "compare_channels", 
-                arguments={"channel_ids": DEFAULT_CHANNELS}
+                arguments={"channel_ids": all_channels}
             )
             
             data = json.loads(result.content[0].text)
@@ -89,7 +113,8 @@ async def test_compare():
             print(f"\nComparing {len(channels)} channels:\n")
             
             for i, channel in enumerate(channels, 1):
-                print(f"{i}. {channel['title']}")
+                marker = " (YOUR CHANNEL)" if channel['channel_id'] == DEFAULT_CHANNEL_ID else ""
+                print(f"{i}. {channel['title']}{marker}")
                 print(f"   Subscribers: {format_number(channel['subscribers'])}")
                 print(f"   Total Views: {format_number(channel['total_views'])}")
                 print(f"   Videos: {channel['video_count']:,}")
@@ -109,12 +134,12 @@ async def test_strategy():
             
             result = await session.call_tool(
                 "analyze_content_strategy", 
-                arguments={"channel_id": DEFAULT_CHANNELS[0]}
+                arguments={"channel_id": DEFAULT_CHANNEL_ID}
             )
             
             strategy = json.loads(result.content[0].text)
             
-            print(f"\nChannel: {strategy['title']}")
+            print(f"\nChannel: {strategy['title']} (YOUR CHANNEL)")
             print(f"\nContent Strategy Analysis:")
             print(f"   Total Videos: {strategy['total_videos']:,}")
             print(f"   Posting Frequency: {strategy['posting_frequency']}")
@@ -125,6 +150,10 @@ async def test_strategy():
 
 async def test_benchmark():
     """Test benchmark_performance tool"""
+    if not COMPETITOR_CHANNELS:
+        print("Error: At least one competitor channel required for benchmarking")
+        return
+    
     print("=" * 70)
     print("Testing: benchmark_performance")
     print("=" * 70)
@@ -136,8 +165,8 @@ async def test_benchmark():
             result = await session.call_tool(
                 "benchmark_performance", 
                 arguments={
-                    "target_channel_id": DEFAULT_CHANNELS[0],
-                    "competitor_channel_ids": [DEFAULT_CHANNELS[1]]
+                    "target_channel_id": DEFAULT_CHANNEL_ID,
+                    "competitor_channel_ids": COMPETITOR_CHANNELS
                 }
             )
             
@@ -145,7 +174,7 @@ async def test_benchmark():
             target = data.get("target")
             competitors = data.get("competitors", [])
             
-            print(f"\nTarget Channel: {target['title']}")
+            print(f"\nTarget Channel: {target['title']} (YOUR CHANNEL)")
             print(f"   Subscribers: {format_number(target['subscribers'])}")
             print(f"   Rank by Subscribers: #{target['rank_by_subscribers']}")
             print(f"   Rank by Engagement: #{target['rank_by_engagement']}")
@@ -160,6 +189,10 @@ async def test_benchmark():
 
 async def test_advantages():
     """Test identify_competitive_advantages tool"""
+    if not COMPETITOR_CHANNELS:
+        print("Error: At least one competitor channel required for comparison")
+        return
+    
     print("=" * 70)
     print("Testing: identify_competitive_advantages")
     print("=" * 70)
@@ -171,14 +204,14 @@ async def test_advantages():
             result = await session.call_tool(
                 "identify_competitive_advantages", 
                 arguments={
-                    "channel_id": DEFAULT_CHANNELS[0],
-                    "comparison_channel_ids": [DEFAULT_CHANNELS[1]]
+                    "channel_id": DEFAULT_CHANNEL_ID,
+                    "comparison_channel_ids": COMPETITOR_CHANNELS
                 }
             )
             
             data = json.loads(result.content[0].text)
             
-            print(f"\nChannel: {data['channel']}")
+            print(f"\nChannel: {data['channel']} (YOUR CHANNEL)")
             
             print(f"\nCompetitive Advantages:")
             for adv in data['advantages']:
@@ -197,17 +230,23 @@ async def test_advantages():
 
 async def test_market():
     """Test track_market_share tool"""
+    if not COMPETITOR_CHANNELS:
+        print("Error: At least one competitor channel required for market share analysis")
+        return
+    
     print("=" * 70)
     print("Testing: track_market_share")
     print("=" * 70)
 
+    all_channels = [DEFAULT_CHANNEL_ID] + COMPETITOR_CHANNELS
+    
     async with stdio_client(SERVER_PARAMS) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
             
             result = await session.call_tool(
                 "track_market_share", 
-                arguments={"channel_ids": DEFAULT_CHANNELS}
+                arguments={"channel_ids": all_channels}
             )
             
             data = json.loads(result.content[0].text)
@@ -218,7 +257,8 @@ async def test_market():
             
             print(f"\nMarket Share Distribution:")
             for channel in data['channels']:
-                print(f"\n   {channel['title']}")
+                marker = " (YOUR CHANNEL)" if channel['channel_id'] == DEFAULT_CHANNEL_ID else ""
+                print(f"\n   {channel['title']}{marker}")
                 print(f"      Subscriber Share: {channel['subscriber_share_percent']:.2f}%")
                 print(f"      View Share: {channel['view_share_percent']:.2f}%")
 

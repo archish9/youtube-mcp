@@ -1,0 +1,16 @@
+read @advanced-features.txt and want a new feature "Channel Comparison Tools" and want have all these tools in my MCP server
+
+Compare multiple YouTube channels side-by-side
+
+Analyze content strategies
+
+Benchmark performance metrics
+
+Identify competitive advantages
+
+Track market share
+
+once you create tools I want to show how to use these tools, i don't want unit test, i want actual scripts that show how to pass arguments and see response. read @README.md file so you follow the structure to create and name these testing scripts.
+So create a new folder in examples folder generate the required scripts and readme.md files. these folder is exclusive for "Channel Comparison Tools" feature.
+
+please check the current project and follow the current project structure for coding, testing files and readme content.
