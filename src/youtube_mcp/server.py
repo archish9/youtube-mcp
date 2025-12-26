@@ -462,6 +462,39 @@ async def handle_list_tools() -> list[types.Tool]:
                 },
                 "required": ["channel_ids"]
             }
+        ),
+        # --- Report Generation Tools ---
+        types.Tool(
+            name="generate_channel_report",
+            description="Generate a comprehensive performance report for a YouTube channel including metrics, top videos, and engagement analysis.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "channel_id": {"type": "string", "description": "YouTube channel ID"},
+                    "period_days": {
+                        "type": "number",
+                        "description": "Report period in days (7, 30, or 90)",
+                        "default": 7
+                    },
+                    "include_videos": {
+                        "type": "boolean",
+                        "description": "Include individual video details",
+                        "default": True
+                    }
+                },
+                "required": ["channel_id"]
+            }
+        ),
+        types.Tool(
+            name="generate_video_report",
+            description="Generate a detailed performance report for a specific YouTube video including engagement analysis and metrics.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "video_id": {"type": "string", "description": "YouTube video ID or URL"}
+                },
+                "required": ["video_id"]
+            }
         )
     ]
 
@@ -1271,6 +1304,226 @@ async def handle_call_tool(
                 "total_views": total_views,
                 "channels": channels_data
             }, indent=2))]
+
+        # --- Report Generation Handlers ---
+        elif name == "generate_channel_report":
+            channel_id = arguments.get("channel_id")
+            period_days = int(arguments.get("period_days", 7))
+            include_videos = arguments.get("include_videos", True)
+            
+            # Get channel info
+            channel_request = get_youtube_client().channels().list(
+                part="snippet,statistics",
+                id=channel_id
+            )
+            channel_response = channel_request.execute()
+            
+            if not channel_response.get("items"):
+                return [types.TextContent(type="text", text=f"Channel not found: {channel_id}")]
+            
+            channel = channel_response["items"][0]
+            channel_stats = channel["statistics"]
+            
+            # Get recent videos
+            videos_request = get_youtube_client().search().list(
+                part="snippet",
+                channelId=channel_id,
+                type="video",
+                order="date",
+                maxResults=50,
+                publishedAfter=(datetime.now() - timedelta(days=period_days)).isoformat() + "Z"
+            )
+            videos_response = videos_request.execute()
+            
+            video_ids = [item["id"]["videoId"] for item in videos_response.get("items", [])]
+            
+            # Get video details
+            videos_data = []
+            if video_ids:
+                details_request = get_youtube_client().videos().list(
+                    part="snippet,statistics,contentDetails",
+                    id=",".join(video_ids[:50])
+                )
+                details_response = details_request.execute()
+                
+                for video in details_response.get("items", []):
+                    stats = video["statistics"]
+                    views = int(stats.get("viewCount", 0))
+                    likes = int(stats.get("likeCount", 0))
+                    comments = int(stats.get("commentCount", 0))
+                    
+                    like_rate = (likes / views * 100) if views > 0 else 0
+                    
+                    videos_data.append({
+                        "video_id": video["id"],
+                        "title": video["snippet"]["title"],
+                        "published_at": video["snippet"]["publishedAt"],
+                        "views": views,
+                        "views_formatted": format_number(views),
+                        "likes": likes,
+                        "likes_formatted": format_number(likes),
+                        "comments": comments,
+                        "comments_formatted": format_number(comments),
+                        "like_rate": round(like_rate, 2),
+                        "duration": format_duration(video["contentDetails"]["duration"]),
+                        "url": f"https://youtube.com/watch?v={video['id']}"
+                    })
+            
+            # Calculate aggregate metrics
+            total_views = sum(v["views"] for v in videos_data)
+            total_likes = sum(v["likes"] for v in videos_data)
+            total_comments = sum(v["comments"] for v in videos_data)
+            
+            avg_views = total_views / len(videos_data) if videos_data else 0
+            avg_likes = total_likes / len(videos_data) if videos_data else 0
+            avg_like_rate = (total_likes / total_views * 100) if total_views > 0 else 0
+            
+            # Get top performers
+            top_by_views = sorted(videos_data, key=lambda x: x["views"], reverse=True)[:3]
+            top_by_engagement = sorted(videos_data, key=lambda x: x["like_rate"], reverse=True)[:3]
+            
+            report = {
+                "report_type": "channel_performance",
+                "generated_at": datetime.now().isoformat(),
+                "period_days": period_days,
+                "channel": {
+                    "id": channel_id,
+                    "title": channel["snippet"]["title"],
+                    "description": channel["snippet"]["description"][:200] + "..." if len(channel["snippet"]["description"]) > 200 else channel["snippet"]["description"],
+                    "subscribers": int(channel_stats.get("subscriberCount", 0)),
+                    "subscribers_formatted": format_number(int(channel_stats.get("subscriberCount", 0))),
+                    "total_views": int(channel_stats.get("viewCount", 0)),
+                    "total_views_formatted": format_number(int(channel_stats.get("viewCount", 0))),
+                    "total_videos": int(channel_stats.get("videoCount", 0)),
+                    "thumbnail": channel["snippet"]["thumbnails"]["high"]["url"],
+                    "url": f"https://youtube.com/channel/{channel_id}"
+                },
+                "period_summary": {
+                    "videos_published": len(videos_data),
+                    "total_views": total_views,
+                    "total_views_formatted": format_number(total_views),
+                    "total_likes": total_likes,
+                    "total_likes_formatted": format_number(total_likes),
+                    "total_comments": total_comments,
+                    "total_comments_formatted": format_number(total_comments),
+                    "avg_views_per_video": int(avg_views),
+                    "avg_views_formatted": format_number(int(avg_views)),
+                    "avg_likes_per_video": int(avg_likes),
+                    "avg_like_rate": round(avg_like_rate, 2)
+                },
+                "top_performers": {
+                    "by_views": [{"title": v["title"], "views": v["views_formatted"], "url": v["url"]} for v in top_by_views],
+                    "by_engagement": [{"title": v["title"], "like_rate": f"{v['like_rate']}%", "url": v["url"]} for v in top_by_engagement]
+                }
+            }
+            
+            if include_videos:
+                report["videos"] = videos_data
+            
+            return [types.TextContent(type="text", text=json.dumps(report, indent=2))]
+
+        elif name == "generate_video_report":
+            video_id = extract_video_id(arguments.get("video_id"))
+            
+            # Get video details
+            request = get_youtube_client().videos().list(
+                part="snippet,statistics,contentDetails",
+                id=video_id
+            )
+            response = request.execute()
+            
+            if not response.get("items"):
+                return [types.TextContent(type="text", text=f"Video not found: {video_id}")]
+            
+            video = response["items"][0]
+            snippet = video["snippet"]
+            stats = video["statistics"]
+            content = video["contentDetails"]
+            
+            views = int(stats.get("viewCount", 0))
+            likes = int(stats.get("likeCount", 0))
+            comments = int(stats.get("commentCount", 0))
+            
+            like_rate = (likes / views * 100) if views > 0 else 0
+            comment_rate = (comments / views * 100) if views > 0 else 0
+            engagement_score = (like_rate * 0.7) + (comment_rate * 0.3 * 10)
+            
+            # Performance rating
+            rating = _calculate_performance_rating(like_rate, comment_rate)
+            
+            # Performance score
+            score = min(engagement_score * 10, 100)
+            if score >= 80:
+                grade = "A"
+            elif score >= 60:
+                grade = "B"
+            elif score >= 40:
+                grade = "C"
+            elif score >= 20:
+                grade = "D"
+            else:
+                grade = "F"
+            
+            # Quality signals
+            signals = []
+            concerns = []
+            
+            if like_rate >= 5:
+                signals.append("Excellent like-to-view ratio")
+            elif like_rate < 1:
+                concerns.append("Low like-to-view ratio")
+            
+            if comment_rate >= 0.5:
+                signals.append("High audience engagement in comments")
+            elif comment_rate < 0.05:
+                concerns.append("Low comment engagement")
+            
+            if views > 1000000:
+                signals.append("Viral reach achieved")
+            elif views > 100000:
+                signals.append("Strong video reach")
+            elif views < 1000:
+                concerns.append("Limited reach")
+            
+            report = {
+                "report_type": "video_performance",
+                "generated_at": datetime.now().isoformat(),
+                "video": {
+                    "id": video_id,
+                    "title": snippet["title"],
+                    "description": snippet["description"][:300] + "..." if len(snippet["description"]) > 300 else snippet["description"],
+                    "channel": snippet["channelTitle"],
+                    "channel_id": snippet["channelId"],
+                    "published_at": snippet["publishedAt"],
+                    "duration": format_duration(content["duration"]),
+                    "thumbnail": snippet["thumbnails"]["high"]["url"],
+                    "url": f"https://youtube.com/watch?v={video_id}"
+                },
+                "metrics": {
+                    "views": views,
+                    "views_formatted": format_number(views),
+                    "likes": likes,
+                    "likes_formatted": format_number(likes),
+                    "comments": comments,
+                    "comments_formatted": format_number(comments),
+                    "like_rate": round(like_rate, 2),
+                    "comment_rate": round(comment_rate, 3),
+                    "engagement_score": round(engagement_score, 2)
+                },
+                "performance": {
+                    "score": round(score, 1),
+                    "grade": grade,
+                    "like_rating": rating["like_rating"],
+                    "comment_rating": rating["comment_rating"]
+                },
+                "analysis": {
+                    "quality_signals": signals if signals else ["No strong signals detected"],
+                    "areas_for_improvement": concerns if concerns else ["No major concerns"],
+                    "overall_assessment": "Strong" if len(signals) > len(concerns) else "Needs Improvement" if len(concerns) > len(signals) else "Average"
+                }
+            }
+            
+            return [types.TextContent(type="text", text=json.dumps(report, indent=2))]
 
         else:
             raise ValueError(f"Unknown tool: {name}")

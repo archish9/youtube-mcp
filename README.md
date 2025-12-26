@@ -49,6 +49,10 @@ YouTube MCP is an MCP server that enables AI assistants like Claude, Cursor, and
 - Identify competitive advantages
 - Track market share
 
+### Report Generation (2 tools)
+- Generate comprehensive channel reports
+- Generate detailed video performance reports
+
 ---
 
 ## Installation
