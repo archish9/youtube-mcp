@@ -199,6 +199,34 @@ async def test_analyze_potential(video_id=DEFAULT_VIDEO_ID):
             print(f"\nOverall Assessment: {data['overall_assessment']}")
 
 
+
+async def test_calculate_engagement_rate(video_id=DEFAULT_VIDEO_ID):
+    """Test calculate_engagement_rate tool"""
+    print("=" * 70)
+    print(f"Testing: calculate_engagement_rate (Video: {video_id})")
+    print("=" * 70)
+
+    async with stdio_client(SERVER_PARAMS) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            
+            result = await session.call_tool(
+                "calculate_engagement_rate", 
+                arguments={"video_id": video_id}
+            )
+            
+            data = json.loads(result.content[0].text)
+            print(f"\nVideo: {data['title']}")
+            print(f"Views: {data['views']}")
+            print(f"Likes: {data['likes']}")
+            print(f"Comments: {data['comments']}")
+            print(f"\nCalculated Metrics:")
+            print(f"  Like Rate: {data['like_rate_percent']}%")
+            print(f"  Comment Rate: {data['comment_rate_percent']}%")
+            print(f"  Engagement Score: {data['engagement_score']}")
+            print(f"  Formula: {data['formula']}")
+
+
 async def run_all_tests(video_id=DEFAULT_VIDEO_ID):
     """Run all tests sequentially"""
     tests = [
@@ -236,6 +264,7 @@ if __name__ == "__main__":
         "score": lambda: test_performance_score(video_id),
         "compare": lambda: test_compare_videos(video_ids if video_ids else None),
         "potential": lambda: test_analyze_potential(video_id),
+        "calculate": lambda: test_calculate_engagement_rate(video_id),
         "all": lambda: run_all_tests(video_id)
     }
     

@@ -41,8 +41,9 @@ YouTube MCP is an MCP server that enables AI assistants like Claude, Cursor, and
 - **Trending** — Discover trending videos by region
 - **Playlists** — Access playlist contents
 
-### Video Analytics (5 tools)
+### Video Analytics (6 tools)
 - Get video metrics with engagement rates
+- Calculate weighted engagement metrics
 - Analyze engagement quality
 - Calculate performance scores
 - Compare multiple videos
@@ -58,6 +59,14 @@ YouTube MCP is an MCP server that enables AI assistants like Claude, Cursor, and
 ### Report Generation (2 tools)
 - Generate comprehensive channel reports
 - Generate detailed video performance reports
+
+### Advanced Discovery & Community (6 tools)
+- **Channel Search** — Find channels by keyword
+- **Channel Playlists** — List all playlists for a channel
+- **Related Videos** — Find videos related to a specific video
+- **Video Categories** — Explore YouTube categories by region
+- **Comment Replies** — Fetch replies to top-level comments
+- **Live Streams** — Get status and details for live broadcasts
 
 ### Framework Integration
 Want to use YouTube MCP with **LangChain**, **LlamaIndex**, or other AI frameworks?
@@ -204,6 +213,7 @@ The `examples/` directory contains test scripts organized by feature:
 | `examples/basic/` | Core tools (video info, transcripts, search) | [View README](examples/basic/README.md) |
 | `examples/video-analytics/` | Analytics tools (metrics, growth, predictions) | [View README](examples/video-analytics/README.md) |
 | `examples/channel-comparison/` | Comparison tools (benchmark, market share) | [View README](examples/channel-comparison/README.md) |
+| `examples/advanced-features/` | Advanced discovery and community tools | [View README](examples/advanced-features/README.md) |
 
 ```bash
 # Run basic demos

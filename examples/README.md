@@ -30,12 +30,13 @@ This folder contains example scripts and documentation for all YouTube MCP tools
 | Feature | Tools | Description |
 |---------|-------|-------------|
 | [Basic Tools](./basic/) | 8 | Core YouTube data retrieval (videos, channels, search, comments, transcripts) |
-| [Video Analytics](./video-analytics/) | 5 | Video performance analysis and engagement metrics |
+| [Video Analytics](./video-analytics/) | 6 | Video performance analysis and engagement metrics |
 | [Channel Comparison](./channel-comparison/) | 5 | Compare and benchmark multiple YouTube channels |
 | [Report Generation](./report-generation/) | 2 | Generate comprehensive performance reports |
+| [Advanced Features](./advanced-features/) | 6 | Advanced discovery and community tools |
 | [Framework Integration](./framework-integration/) | Guide | Integrate with LangChain, LlamaIndex, and other AI frameworks |
 
-**Total: 20 tools**
+**Total: 27 tools**
 
 ---
 
@@ -65,6 +66,7 @@ This folder contains example scripts and documentation for all YouTube MCP tools
 | `get_video_performance_score` | Calculate 0-100 performance score | [README](./video-analytics/README.md#3-get_video_performance_score) |
 | `compare_videos` | Compare multiple videos side-by-side | [README](./video-analytics/README.md#4-compare_videos) |
 | `analyze_video_potential` | Analyze content quality signals | [README](./video-analytics/README.md#5-analyze_video_potential) |
+| `calculate_engagement_rate` | Calculate weighted engagement metrics | [README](./video-analytics/README.md#6-calculate_engagement_rate) |
 
 ---
 
@@ -89,6 +91,19 @@ This folder contains example scripts and documentation for all YouTube MCP tools
 
 ---
 
+### Advanced Features (6)
+
+| Tool | Description | Documentation |
+|------|-------------|---------------|
+| `search_channels` | Search for channels by keyword | [README](./advanced-features/README.md#1-search_channels) |
+| `get_channel_playlists` | List playlists for a channel | [README](./advanced-features/README.md#2-get_channel_playlists) |
+| `get_related_videos` | Find videos related to a video | [README](./advanced-features/README.md#3-get_related_videos) |
+| `get_video_categories` | List standard video categories | [README](./advanced-features/README.md#4-get_video_categories) |
+| `get_comment_replies` | Fetch replies to a comment | [README](./advanced-features/README.md#5-get_comment_replies) |
+| `get_live_stream_info` | Get live stream status and details | [README](./advanced-features/README.md#6-get_live_stream_info) |
+
+---
+
 ## Folder Structure
 
 ```
@@ -108,6 +123,9 @@ examples/
 ├── report-generation/
 │   ├── README.md                # Report tools documentation
 │   └── test_reports.py          # Test report generation
+├── advanced-features/
+│   ├── README.md                # Advanced features documentation
+│   └── test_advanced.py         # Test advanced tools
 └── framework-integration/
     └── README.md                # LangChain/LlamaIndex integration guide
 ```

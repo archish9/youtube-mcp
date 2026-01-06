@@ -20,7 +20,7 @@ This folder demonstrates the **Video Analytics Tools** integrated into the YouTu
 
 ## Available Tools
 
-This section describes all **5 Video Analytics Tools** available in the YouTube MCP server.
+This section describes all **6 Video Analytics Tools** available in the YouTube MCP server.
 
 ### 1. `get_video_analytics`
 
@@ -161,6 +161,28 @@ Analyze content quality signals and audience resonance.
 - Understand what's working in your content
 - Get actionable improvement suggestions
 - Evaluate video quality before promotion
+
+
+---
+
+### 6. `calculate_engagement_rate`
+
+Calculate weighted engagement metrics using a specific formula.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `video_id` | string | Yes | YouTube video ID or URL |
+
+**Returns:**
+- Current view, like, and comment counts
+- `like_rate_percent`: Likes / Views * 100
+- `comment_rate_percent`: Comments / Views * 100
+- `engagement_score`: (Like Rate * 0.6) + (Comment Rate * 0.4)
+- `formula`: Description of calculation used
+
+**Use Cases:**
+- Precise engagement tracking using a custom weighted formula
+- Compare quantitative performance across videos
 
 ---
 

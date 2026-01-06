@@ -122,8 +122,9 @@ List recent videos from a YouTube channel.
 |-----------|------|----------|-------------|
 | `channel_id` | string | Yes | YouTube channel ID |
 | `max_results` | number | No | Number of videos (1-50, default: 10) |
+| `order` | string | No | Sort by: date, rating, relevance, title, videoCount, viewCount (default: date) |
 
-**Returns:** List of recent videos with titles, descriptions, published dates, thumbnails.
+**Returns:** List of videos with titles, descriptions, published dates, thumbnails (sorted by specified order).
 
 **Example:**
 ```bash

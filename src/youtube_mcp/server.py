@@ -282,6 +282,12 @@ async def handle_list_tools() -> list[types.Tool]:
                         "type": "number",
                         "description": "Maximum number of videos (1-50)",
                         "default": 10
+                    },
+                    "order": {
+                        "type": "string",
+                        "description": "Sort order: date, rating, relevance, title, videoCount, viewCount",
+                        "enum": ["date", "rating", "relevance", "title", "videoCount", "viewCount"],
+                        "default": "date"
                     }
                 },
                 "required": ["channel_id"]
@@ -495,6 +501,94 @@ async def handle_list_tools() -> list[types.Tool]:
                 },
                 "required": ["video_id"]
             }
+        ),
+        # --- New Tools ---
+        types.Tool(
+            name="get_related_videos",
+            description="Get videos related to a specific YouTube video",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "video_id": {"type": "string", "description": "YouTube video ID or URL"},
+                    "max_results": {"type": "number", "default": 10, "description": "Max results (1-50)"}
+                },
+                "required": ["video_id"]
+            }
+        ),
+        types.Tool(
+            name="get_channel_playlists",
+            description="List playlists from a YouTube channel",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "channel_id": {"type": "string", "description": "YouTube channel ID"},
+                    "max_results": {"type": "number", "default": 10, "description": "Max results (1-50)"}
+                },
+                "required": ["channel_id"]
+            }
+        ),
+        types.Tool(
+            name="search_channels",
+            description="Search for YouTube channels by keyword",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query"},
+                    "max_results": {"type": "number", "default": 10, "description": "Max results (1-50)"},
+                    "order": {
+                        "type": "string", 
+                        "description": "Sort order: date, rating, relevance, title, videoCount, viewCount",
+                        "enum": ["date", "rating", "relevance", "title", "videoCount", "viewCount"],
+                        "default": "relevance"
+                    }
+                },
+                "required": ["query"]
+            }
+        ),
+        types.Tool(
+            name="get_video_categories",
+            description="Get list of video categories for a region",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "region_code": {"type": "string", "default": "US", "description": "ISO 3166-1 alpha-2 country code"}
+                },
+                "required": []
+            }
+        ),
+        types.Tool(
+            name="get_comment_replies",
+            description="Get replies to a specific comment",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "comment_id": {"type": "string", "description": "Parent comment ID"},
+                    "max_results": {"type": "number", "default": 20, "description": "Max replies(1-100)"}
+                },
+                "required": ["comment_id"]
+            }
+        ),
+        types.Tool(
+            name="get_live_stream_info",
+            description="Get status and details of a live stream video",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "video_id": {"type": "string", "description": "YouTube video ID or URL"}
+                },
+                "required": ["video_id"]
+            }
+        ),
+        types.Tool(
+            name="calculate_engagement_rate",
+            description="Calculate engagement metrics for a video",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "video_id": {"type": "string", "description": "YouTube video ID or URL"}
+                },
+                "required": ["video_id"]
+            }
         )
     ]
 
@@ -553,7 +647,7 @@ async def handle_call_tool(
             
             return [types.TextContent(
                 type="text",
-                text=json.dumps(info, indent=2)
+                text=json.dumps(info, indent=2, ensure_ascii=False)
             )]
         
         elif name == "get_video_transcript":
@@ -597,7 +691,7 @@ async def handle_call_tool(
                 
                 return [types.TextContent(
                     type="text",
-                    text=json.dumps(result, indent=2)
+                    text=json.dumps(result, indent=2, ensure_ascii=False)
                 )]
                 
             except TranscriptsDisabled:
@@ -634,6 +728,7 @@ async def handle_call_tool(
             for item in response.get("items", []):
                 comment = item["snippet"]["topLevelComment"]["snippet"]
                 comments.append({
+                    "id": item["id"],
                     "author": comment["authorDisplayName"],
                     "text": comment["textDisplay"],
                     "likes": comment["likeCount"],
@@ -649,7 +744,7 @@ async def handle_call_tool(
             
             return [types.TextContent(
                 type="text",
-                text=json.dumps(result, indent=2)
+                text=json.dumps(result, indent=2, ensure_ascii=False)
             )]
         
         elif name == "search_videos":
@@ -688,7 +783,7 @@ async def handle_call_tool(
             
             return [types.TextContent(
                 type="text",
-                text=json.dumps(result, indent=2)
+                text=json.dumps(result, indent=2, ensure_ascii=False)
             )]
         
         elif name == "get_channel_info":
@@ -747,18 +842,19 @@ async def handle_call_tool(
             
             return [types.TextContent(
                 type="text",
-                text=json.dumps(info, indent=2)
+                text=json.dumps(info, indent=2, ensure_ascii=False)
             )]
         
         elif name == "get_channel_videos":
             channel_id = arguments.get("channel_id")
             max_results = min(arguments.get("max_results", 10), 50)
+            order = arguments.get("order", "date")
             
             request = get_youtube_client().search().list(
                 part="snippet",
                 channelId=channel_id,
                 type="video",
-                order="date",
+                order=order,
                 maxResults=max_results
             )
             response = request.execute()
@@ -783,7 +879,7 @@ async def handle_call_tool(
             
             return [types.TextContent(
                 type="text",
-                text=json.dumps(result, indent=2)
+                text=json.dumps(result, indent=2, ensure_ascii=False)
             )]
         
         elif name == "get_trending_videos":
@@ -828,7 +924,7 @@ async def handle_call_tool(
             
             return [types.TextContent(
                 type="text",
-                text=json.dumps(result, indent=2)
+                text=json.dumps(result, indent=2, ensure_ascii=False)
             )]
         
         elif name == "get_playlist_info":
@@ -886,7 +982,7 @@ async def handle_call_tool(
             
             return [types.TextContent(
                 type="text",
-                text=json.dumps(result, indent=2)
+                text=json.dumps(result, indent=2, ensure_ascii=False)
             )]
         
         elif name == "get_video_analytics":
@@ -896,7 +992,7 @@ async def handle_call_tool(
             if not data:
                 return [types.TextContent(type="text", text=f"Video not found: {video_id}")]
             
-            return [types.TextContent(type="text", text=json.dumps(data, indent=2))]
+            return [types.TextContent(type="text", text=json.dumps(data, indent=2, ensure_ascii=False))]
 
         elif name == "analyze_video_engagement":
             video_id = extract_video_id(arguments.get("video_id"))
@@ -921,7 +1017,7 @@ async def handle_call_tool(
                 "interpretation": f"This video has {rating['like_rating'].lower()} like engagement and {rating['comment_rating'].lower()}."
             }
             
-            return [types.TextContent(type="text", text=json.dumps(result, indent=2))]
+            return [types.TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
 
         elif name == "get_video_performance_score":
             video_id = extract_video_id(arguments.get("video_id"))
@@ -964,7 +1060,7 @@ async def handle_call_tool(
                 }
             }
             
-            return [types.TextContent(type="text", text=json.dumps(result, indent=2))]
+            return [types.TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
 
         elif name == "compare_videos":
             video_ids = arguments.get("video_ids", [])
@@ -1009,7 +1105,7 @@ async def handle_call_tool(
                 }
             }
             
-            return [types.TextContent(type="text", text=json.dumps(result, indent=2))]
+            return [types.TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
 
         elif name == "analyze_video_potential":
             video_id = extract_video_id(arguments.get("video_id"))
@@ -1054,7 +1150,7 @@ async def handle_call_tool(
                 "overall_assessment": "Strong" if len(signals) > len(concerns) else "Needs Improvement" if len(concerns) > len(signals) else "Average"
             }
             
-            return [types.TextContent(type="text", text=json.dumps(result, indent=2))]
+            return [types.TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
 
 
         elif name == "compare_channels":
@@ -1087,7 +1183,7 @@ async def handle_call_tool(
                 except:
                     continue
             
-            return [types.TextContent(type="text", text=json.dumps({"channels": channels_data}, indent=2))]
+            return [types.TextContent(type="text", text=json.dumps({"channels": channels_data}, indent=2, ensure_ascii=False))]
 
         elif name == "analyze_content_strategy":
             channel_id = arguments.get("channel_id")
@@ -1139,7 +1235,7 @@ async def handle_call_tool(
                 "avg_views_per_video": int(stats.get("viewCount", 0)) // max(video_count, 1)
             }
             
-            return [types.TextContent(type="text", text=json.dumps(strategy, indent=2))]
+            return [types.TextContent(type="text", text=json.dumps(strategy, indent=2, ensure_ascii=False))]
 
         elif name == "benchmark_performance":
             target_id = arguments.get("target_channel_id")
@@ -1190,7 +1286,7 @@ async def handle_call_tool(
                 "target": target_data,
                 "competitors": [c for c in channels_data if not c["is_target"]],
                 "total_channels": len(channels_data)
-            }, indent=2))]
+            }, indent=2, ensure_ascii=False))]
 
         elif name == "identify_competitive_advantages":
             channel_id = arguments.get("channel_id")
@@ -1259,7 +1355,7 @@ async def handle_call_tool(
                 "advantages": advantages,
                 "weaknesses": weaknesses,
                 "metrics": target
-            }, indent=2))]
+            }, indent=2, ensure_ascii=False))]
 
         elif name == "track_market_share":
             channel_ids = arguments.get("channel_ids", [])
@@ -1303,7 +1399,7 @@ async def handle_call_tool(
                 "total_subscribers": total_subs,
                 "total_views": total_views,
                 "channels": channels_data
-            }, indent=2))]
+            }, indent=2, ensure_ascii=False))]
 
         # --- Report Generation Handlers ---
         elif name == "generate_channel_report":
@@ -1420,7 +1516,7 @@ async def handle_call_tool(
             if include_videos:
                 report["videos"] = videos_data
             
-            return [types.TextContent(type="text", text=json.dumps(report, indent=2))]
+            return [types.TextContent(type="text", text=json.dumps(report, indent=2, ensure_ascii=False))]
 
         elif name == "generate_video_report":
             video_id = extract_video_id(arguments.get("video_id"))
@@ -1523,7 +1619,246 @@ async def handle_call_tool(
                 }
             }
             
-            return [types.TextContent(type="text", text=json.dumps(report, indent=2))]
+            return [types.TextContent(type="text", text=json.dumps(report, indent=2, ensure_ascii=False))]
+
+        elif name == "get_related_videos":
+            video_id = extract_video_id(arguments.get("video_id"))
+            max_results = min(arguments.get("max_results", 10), 50)
+            
+            try:
+                # 1. Get video details to find title (Fallback since relatedToVideoId is deprecated)
+                video_request = get_youtube_client().videos().list(
+                    part="snippet",
+                    id=video_id
+                )
+                video_response = video_request.execute()
+                
+                if not video_response.get("items"):
+                    return [types.TextContent(type="text", text=f"Video not found: {video_id}")]
+                
+                snippet = video_response["items"][0]["snippet"]
+                title = snippet["title"]
+                
+                # 2. Search using title
+                search_query = title
+                
+                request = get_youtube_client().search().list(
+                    part="snippet",
+                    q=search_query,
+                    type="video",
+                    maxResults=max_results + 1 # Fetch extra to account for filtering original
+                )
+                response = request.execute()
+                
+                videos = []
+                for item in response.get("items", []):
+                    vid = item["id"]["videoId"]
+                    if vid == video_id:
+                        continue # Skip original video
+                        
+                    v_snippet = item["snippet"]
+                    videos.append({
+                        "video_id": vid,
+                        "title": v_snippet["title"],
+                        "channel": v_snippet["channelTitle"],
+                        "published_at": v_snippet["publishedAt"],
+                        "thumbnail": v_snippet["thumbnails"]["high"]["url"],
+                        "url": f"https://youtube.com/watch?v={vid}"
+                    })
+                
+                # Limit to max_results after filtering
+                videos = videos[:max_results]
+                
+                result = {
+                    "related_to_video_id": video_id,
+                    "count": len(videos),
+                    "videos": videos,
+                    "note": "Native relatedToVideoId is deprecated; results based on title search."
+                }
+                return [types.TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
+                
+            except Exception as e:
+                return [types.TextContent(type="text", text=f"Error fetching related videos: {str(e)}")]
+
+        elif name == "get_channel_playlists":
+            channel_id = arguments.get("channel_id")
+            max_results = min(arguments.get("max_results", 10), 50)
+            
+            request = get_youtube_client().playlists().list(
+                part="snippet,contentDetails",
+                channelId=channel_id,
+                maxResults=max_results
+            )
+            response = request.execute()
+            
+            playlists = []
+            for item in response.get("items", []):
+                snippet = item["snippet"]
+                playlists.append({
+                    "playlist_id": item["id"],
+                    "title": snippet["title"],
+                    "description": snippet["description"],
+                    "item_count": item["contentDetails"]["itemCount"],
+                    "published_at": snippet["publishedAt"],
+                    "thumbnail": snippet["thumbnails"]["high"]["url"] if "high" in snippet["thumbnails"] else ""
+                })
+            
+            result = {
+                "channel_id": channel_id,
+                "count": len(playlists),
+                "playlists": playlists
+            }
+            return [types.TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
+
+        elif name == "search_channels":
+            query = arguments.get("query")
+            max_results = min(arguments.get("max_results", 10), 50)
+            order = arguments.get("order", "relevance")
+            
+            request = get_youtube_client().search().list(
+                part="snippet",
+                q=query,
+                type="channel",
+                maxResults=max_results,
+                order=order
+            )
+            response = request.execute()
+            
+            channels = []
+            for item in response.get("items", []):
+                snippet = item["snippet"]
+                channels.append({
+                    "channel_id": item["snippet"]["channelId"],
+                    "title": snippet["title"],
+                    "description": snippet["description"],
+                    "published_at": snippet["publishedAt"],
+                    "thumbnail": snippet["thumbnails"]["high"]["url"] if "high" in snippet["thumbnails"] else ""
+                })
+            
+            result = {
+                "query": query,
+                "count": len(channels),
+                "channels": channels
+            }
+            return [types.TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
+
+        elif name == "get_video_categories":
+            region_code = arguments.get("region_code", "US")
+            
+            request = get_youtube_client().videoCategories().list(
+                part="snippet",
+                regionCode=region_code
+            )
+            response = request.execute()
+            
+            categories = []
+            for item in response.get("items", []):
+                categories.append({
+                    "id": item["id"],
+                    "title": item["snippet"]["title"],
+                    "assignable": item["snippet"]["assignable"]
+                })
+            
+            result = {
+                "region_code": region_code,
+                "count": len(categories),
+                "categories": categories
+            }
+            return [types.TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
+
+        elif name == "get_comment_replies":
+            comment_id = arguments.get("comment_id")
+            max_results = min(arguments.get("max_results", 20), 100)
+            
+            request = get_youtube_client().comments().list(
+                part="snippet",
+                parentId=comment_id,
+                maxResults=max_results
+            )
+            try:
+                response = request.execute()
+                replies = []
+                for item in response.get("items", []):
+                    snippet = item["snippet"]
+                    replies.append({
+                        "comment_id": item["id"],
+                        "author": snippet["authorDisplayName"],
+                        "text": snippet["textDisplay"],
+                        "likes": snippet["likeCount"],
+                        "published_at": snippet["publishedAt"]
+                    })
+                
+                result = {
+                    "parent_comment_id": comment_id,
+                    "count": len(replies),
+                    "replies": replies
+                }
+                return [types.TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
+            except Exception as e:
+                return [types.TextContent(type="text", text=f"Error fetching replies: {str(e)}")]
+
+        elif name == "get_live_stream_info":
+            video_id = extract_video_id(arguments.get("video_id"))
+            
+            request = get_youtube_client().videos().list(
+                part="snippet,liveStreamingDetails,statistics",
+                id=video_id
+            )
+            response = request.execute()
+            
+            if not response.get("items"):
+                return [types.TextContent(type="text", text=f"Video not found: {video_id}")]
+            
+            video = response["items"][0]
+            snippet = video["snippet"]
+            live_details = video.get("liveStreamingDetails", {})
+            stats = video.get("statistics", {})
+            
+            is_live = snippet.get("liveBroadcastContent") == "live"
+            
+            result = {
+                "video_id": video_id,
+                "title": snippet["title"],
+                "channel": snippet["channelTitle"],
+                "live_status": snippet.get("liveBroadcastContent"),
+                "is_live_now": is_live,
+                "concurrent_viewers": int(live_details.get("concurrentViewers", 0)) if is_live else 0,
+                "scheduled_start_time": live_details.get("scheduledStartTime"),
+                "actual_start_time": live_details.get("actualStartTime"),
+                "actual_end_time": live_details.get("actualEndTime"),
+                "chat_id": live_details.get("activeLiveChatId")
+            }
+            return [types.TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
+
+        elif name == "calculate_engagement_rate":
+            video_id = extract_video_id(arguments.get("video_id"))
+            # Reusing internal helper if possible, or calling API
+            # Since _get_video_data is async and returns dict, let's use it.
+            # But wait, logic requested was specific: like_rate * 0.6 + comment_rate * 0.4
+            
+            data = await _get_video_data(video_id)
+            if not data:
+                return [types.TextContent(type="text", text=f"Video not found: {video_id}")]
+            
+            # Recalculate based on specific request logic
+            # data has like_rate and comment_rate
+            like_rate = data["like_rate"]
+            comment_rate = data["comment_rate"]
+            
+            engagement_score = like_rate * 0.6 + comment_rate * 0.4
+            
+            result = {
+                "video_id": video_id,
+                "title": data["title"],
+                "views": int(data["views"]),
+                "likes": int(data["likes"]),
+                "comments": int(data["comments"]),
+                "like_rate_percent": round(like_rate, 2),
+                "comment_rate_percent": round(comment_rate, 2),
+                "engagement_score": round(engagement_score, 1),
+                "formula": "like_rate * 0.6 + comment_rate * 0.4"
+            }
+            return [types.TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
 
         else:
             raise ValueError(f"Unknown tool: {name}")
