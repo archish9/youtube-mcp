@@ -589,6 +589,30 @@ async def handle_list_tools() -> list[types.Tool]:
                 },
                 "required": ["video_id"]
             }
+        ),
+        types.Tool(
+            name="get_most_liked_video",
+            description="Find the most liked video for a channel or search query",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Channel name or search query"},
+                    "channel_id": {"type": "string", "description": "Optional: Specific YouTube channel ID"}
+                },
+                "required": ["query"]
+            }
+        ),
+        types.Tool(
+            name="get_most_viewed_video",
+            description="Find the most viewed video for a channel or search query",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Channel name or search query"},
+                    "channel_id": {"type": "string", "description": "Optional: Specific YouTube channel ID"}
+                },
+                "required": ["query"]
+            }
         )
     ]
 
@@ -1832,19 +1856,12 @@ async def handle_call_tool(
 
         elif name == "calculate_engagement_rate":
             video_id = extract_video_id(arguments.get("video_id"))
-            # Reusing internal helper if possible, or calling API
-            # Since _get_video_data is async and returns dict, let's use it.
-            # But wait, logic requested was specific: like_rate * 0.6 + comment_rate * 0.4
-            
             data = await _get_video_data(video_id)
             if not data:
                 return [types.TextContent(type="text", text=f"Video not found: {video_id}")]
             
-            # Recalculate based on specific request logic
-            # data has like_rate and comment_rate
             like_rate = data["like_rate"]
             comment_rate = data["comment_rate"]
-            
             engagement_score = like_rate * 0.6 + comment_rate * 0.4
             
             result = {
@@ -1859,6 +1876,73 @@ async def handle_call_tool(
                 "formula": "like_rate * 0.6 + comment_rate * 0.4"
             }
             return [types.TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
+
+        elif name in ["get_most_liked_video", "get_most_viewed_video"]:
+            query = arguments.get("query")
+            channel_id = arguments.get("channel_id")
+            
+            # 1. Resolve channel ID if not provided
+            if not channel_id:
+                channel_search = get_youtube_client().search().list(
+                    part="snippet",
+                    q=query,
+                    type="channel",
+                    maxResults=1
+                ).execute()
+                
+                if channel_search.get("items"):
+                    channel_id = channel_search["items"][0]["id"]["channelId"]
+            
+            # 2. Search for videos
+            search_params = {
+                "part": "snippet",
+                "type": "video",
+                "maxResults": 50,
+                "order": "viewCount"
+            }
+            if channel_id:
+                search_params["channelId"] = channel_id
+            else:
+                search_params["q"] = query
+            
+            search_results = get_youtube_client().search().list(**search_params).execute()
+            video_ids = [item["id"]["videoId"] for item in search_results.get("items", [])]
+            
+            if not video_ids:
+                return [types.TextContent(type="text", text=f"No videos found for: {query}")]
+            
+            # 3. Get statistics for videos
+            video_details = get_youtube_client().videos().list(
+                part="snippet,statistics,contentDetails",
+                id=",".join(video_ids)
+            ).execute()
+            
+            videos = []
+            for item in video_details.get("items", []):
+                stats = item["statistics"]
+                snippet = item["snippet"]
+                videos.append({
+                    "video_id": item["id"],
+                    "title": snippet["title"],
+                    "channel": snippet["channelTitle"],
+                    "views": int(stats.get("viewCount", 0)),
+                    "likes": int(stats.get("likeCount", 0)),
+                    "comments": int(stats.get("commentCount", 0)),
+                    "published_at": snippet["publishedAt"],
+                    "duration": format_duration(item["contentDetails"]["duration"]),
+                    "url": f"https://youtube.com/watch?v={item['id']}"
+                })
+            
+            # 4. Sort
+            if name == "get_most_liked_video":
+                videos.sort(key=lambda x: x["likes"], reverse=True)
+            else:
+                videos.sort(key=lambda x: x["views"], reverse=True)
+            
+            if not videos:
+                return [types.TextContent(type="text", text="Could not retrieve video statistics")]
+            
+            return [types.TextContent(type="text", text=json.dumps(videos[0], indent=2, ensure_ascii=False))]
 
         else:
             raise ValueError(f"Unknown tool: {name}")

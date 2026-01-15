@@ -20,7 +20,7 @@ This folder demonstrates **Advanced Discovery and Community Features** added to 
 
 ## Available Tools
 
-This section describes **6 Advanced Tools** available in the YouTube MCP server.
+This section describes **8 Advanced Tools** available in the YouTube MCP server.
 
 ### 1. `search_channels`
 
@@ -134,6 +134,44 @@ Get status and details for a live stream.
 - Real-time analytics
 
 ---
+ 
+### 7. `get_most_liked_video`
+ 
+Find the most liked video for a channel or search query.
+ 
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `query` | string | Yes | Channel name or search query |
+| `channel_id` | string | No | Optional: Specific YouTube channel ID |
+ 
+**Returns:**
+- Detailed metadata for the most liked video found
+- Includes likes, views, duration, and URL
+ 
+**Use Cases:**
+- Identifying viral hits for a channel
+- Content research and benchmarking
+ 
+---
+ 
+### 8. `get_most_viewed_video`
+ 
+Find the most viewed video for a channel or search query.
+ 
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `query` | string | Yes | Channel name or search query |
+| `channel_id` | string | No | Optional: Specific YouTube channel ID |
+ 
+**Returns:**
+- Detailed metadata for the most viewed video found
+- Includes views, likes, duration, and URL
+ 
+**Use Cases:**
+- Analyzing long-term channel performance
+- Identifying evergreen content
+ 
+---
 
 ## Available Scripts
 
@@ -156,6 +194,8 @@ python examples/advanced-features/test_advanced.py <command> [args]
 | `categories` | `[region]` | Get video categories |
 | `replies` | `[comment_id]` | Get comment replies |
 | `live` | `[video_id]` | Get live stream info |
+| `most_liked` | `[query]` | Find most liked video |
+| `most_viewed` | `[query]` | Find most viewed video |
 | `all` | `[video_id]` | Run all tests |
 
 **Examples:**
@@ -168,4 +208,7 @@ python examples/advanced-features/test_advanced.py playlists UC_x5XG1OV2P6uZZ5FS
 
 # Get related
 python examples/advanced-features/test_advanced.py related dQw4w9WgXcQ
+ 
+# Find most liked video
+python examples/advanced-features/test_advanced.py most_liked "Keka HR"
 ```

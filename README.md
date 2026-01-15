@@ -60,13 +60,15 @@ YouTube MCP is an MCP server that enables AI assistants like Claude, Cursor, and
 - Generate comprehensive channel reports
 - Generate detailed video performance reports
 
-### Advanced Discovery & Community (6 tools)
+### Advanced Discovery & Community (8 tools)
 - **Channel Search** — Find channels by keyword
 - **Channel Playlists** — List all playlists for a channel
 - **Related Videos** — Find videos related to a specific video
 - **Video Categories** — Explore YouTube categories by region
 - **Comment Replies** — Fetch replies to top-level comments
 - **Live Streams** — Get status and details for live broadcasts
+- **Most Liked** — Find a channel's most liked video
+- **Most Viewed** — Find a channel's most viewed video
 
 ### Framework Integration
 Want to use YouTube MCP with **LangChain**, **LlamaIndex**, or other AI frameworks?
@@ -201,6 +203,7 @@ Once configured, you can ask your AI assistant:
 - *"Compare these two channels: UCX6OQ3DkcsbYNE6H8uQQuVA and UC-lHJZR3Gqxm24_Vd_AJ5Yw"*
 - *"Track the performance of my latest video"*
 - *"What are the trending videos in the US right now?"*
+- *"Show me the most liked video for Keka HR"*
 
 ---
 

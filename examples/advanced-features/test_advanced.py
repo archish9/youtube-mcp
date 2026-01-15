@@ -9,6 +9,8 @@ Usage:
     python test_advanced.py categories [region]
     python test_advanced.py replies [comment_id]
     python test_advanced.py live [video_id]
+    python test_advanced.py most_liked [query]
+    python test_advanced.py most_viewed [query]
     python test_advanced.py all [video_id]
 """
 
@@ -165,6 +167,36 @@ async def test_live_stream_info(video_id=DEFAULT_VIDEO_ID):
             )
             print(result.content[0].text)
 
+async def test_most_liked(query="Google Developers"):
+    print("=" * 70)
+    print(f"Testing: get_most_liked_video (Query: {query})")
+    print("=" * 70)
+
+    async with stdio_client(SERVER_PARAMS) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            
+            result = await session.call_tool(
+                "get_most_liked_video", 
+                arguments={"query": query}
+            )
+            print(result.content[0].text)
+
+async def test_most_viewed(query="Google Developers"):
+    print("=" * 70)
+    print(f"Testing: get_most_viewed_video (Query: {query})")
+    print("=" * 70)
+
+    async with stdio_client(SERVER_PARAMS) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            
+            result = await session.call_tool(
+                "get_most_viewed_video", 
+                arguments={"query": query}
+            )
+            print(result.content[0].text)
+
 async def run_all_tests(video_id=DEFAULT_VIDEO_ID):
     """Run all tests sequentially"""
     await test_search_channels()
@@ -178,6 +210,10 @@ async def run_all_tests(video_id=DEFAULT_VIDEO_ID):
     await test_comment_replies()
     print()
     await test_live_stream_info(video_id)
+    print()
+    await test_most_liked("Keka HR")
+    print()
+    await test_most_viewed("Keka HR")
 
 if __name__ == "__main__":
     command = "all"
@@ -196,6 +232,8 @@ if __name__ == "__main__":
         "categories": lambda: test_video_categories(arg if len(sys.argv) > 2 else "US"),
         "replies": lambda: test_comment_replies(arg if len(sys.argv) > 2 else None),
         "live": lambda: test_live_stream_info(arg),
+        "most_liked": lambda: test_most_liked(arg if len(sys.argv) > 2 else "Google Developers"),
+        "most_viewed": lambda: test_most_viewed(arg if len(sys.argv) > 2 else "Google Developers"),
         "all": lambda: run_all_tests(arg)
     }
     
@@ -203,4 +241,4 @@ if __name__ == "__main__":
         asyncio.run(test_map[command]())
     else:
         print(f"Unknown command: {command}")
-        print("Available commands: channels, playlists, related, categories, replies, live, all")
+        print("Available commands: channels, playlists, related, categories, replies, live, most_liked, most_viewed, all")
