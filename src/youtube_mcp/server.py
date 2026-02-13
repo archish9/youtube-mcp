@@ -118,7 +118,10 @@ async def _get_video_data(video_id: str):
         # Calculate engagement metrics
         like_rate = (likes / views * 100) if views > 0 else 0
         comment_rate = (comments / views * 100) if views > 0 else 0
-        engagement_score = (like_rate * 0.7) + (comment_rate * 0.3 * 10)  # Weighted score
+        
+        # New weighted score: Likes are more common, so we weight them but scale them
+        # 2% like rate + 0.1% comment rate should be a "Good" result (~60-70)
+        engagement_score = (like_rate * 20) + (comment_rate * 100)
         
         return {
             "video_id": video_id,
@@ -173,13 +176,18 @@ async def handle_list_tools() -> list[types.Tool]:
     return [
         types.Tool(
             name="get_video_info",
-            description="Get detailed metadata about a YouTube video including title, description, views, likes, duration, and channel info",
+            description=(
+                "Retrieves comprehensive metadata for a specific YouTube video.\n"
+                "Use this tool when you need details like title, description, view count, like count, comment count, "
+                "duration, publication date, channel information, and tags.\n"
+                "Returns a JSON object containing the video's snippet, statistics, and content details."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
                     "video_id": {
                         "type": "string",
-                        "description": "YouTube video ID or full URL (e.g., 'dQw4w9WgXcQ' or 'https://youtube.com/watch?v=dQw4w9WgXcQ')"
+                        "description": "The unique YouTube video ID (e.g., 'dQw4w9WgXcQ') or the full YouTube URL (e.g., 'https://youtube.com/watch?v=dQw4w9WgXcQ')."
                     }
                 },
                 "required": ["video_id"]
@@ -187,17 +195,22 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="get_video_transcript",
-            description="Get the transcript/captions of a YouTube video. Returns timestamped text.",
+            description=(
+                "Fetches the full transcript/captions for a YouTube video.\n"
+                "Use this tool to read the spoken content of a video for summarization, analysis, or information extraction.\n"
+                "Returns a list of transcript segments, each with a timestamp (start time), duration, and text.\n"
+                "Note: Returns an error if transcripts are disabled or not available in the requested language."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
                     "video_id": {
                         "type": "string",
-                        "description": "YouTube video ID or full URL"
+                        "description": "The unique YouTube video ID or full URL."
                     },
                     "language": {
                         "type": "string",
-                        "description": "Language code (e.g., 'en', 'es', 'fr'). Default: 'en'",
+                        "description": "The preferred ISO 639-1 language code for the transcript (e.g., 'en' for English, 'es' for Spanish, 'fr' for French). Defaults to 'en'.",
                         "default": "en"
                     }
                 },
@@ -206,22 +219,27 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="get_video_comments",
-            description="Get top comments from a YouTube video",
+            description=(
+                "Retrieves top-level comments for a specific YouTube video.\n"
+                "Use this tool to analyze audience sentiment, gather feedback, or see what viewers are discussing.\n"
+                "Returns a list of comments with author name, text, like count, published date, and reply count.\n"
+                "Can retrieve comments sorted by relevance (default) or date."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
                     "video_id": {
                         "type": "string",
-                        "description": "YouTube video ID or full URL"
+                        "description": "The unique YouTube video ID or full URL."
                     },
                     "max_results": {
                         "type": "number",
-                        "description": "Maximum number of comments to retrieve (1-100)",
+                        "description": "The maximum number of comments to retrieve. Accepts values between 1 and 100. Defaults to 20.",
                         "default": 20
                     },
                     "order": {
                         "type": "string",
-                        "description": "Order comments by: time, relevance",
+                        "description": "The order to sort comments by. Options: 'relevance' (top comments) or 'time' (newest first). Defaults to 'relevance'.",
                         "enum": ["time", "relevance"],
                         "default": "relevance"
                     }
@@ -231,22 +249,27 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="search_videos",
-            description="Search for YouTube videos by keyword",
+            description=(
+                "Searches for YouTube videos matching a specific query.\n"
+                "Use this tool to find videos on a topic, by a specific creator, or matching keywords.\n"
+                "Returns a list of matching videos including video ID, title, description, channel name, and publication date.\n"
+                "Supports sorting by relevance, date, view count, and rating."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "Search query"
+                        "description": "The search query (keywords, topic, or channel name)."
                     },
                     "max_results": {
                         "type": "number",
-                        "description": "Maximum number of results (1-50)",
+                        "description": "The maximum number of search results to return. Accepts values between 1 and 50. Defaults to 10.",
                         "default": 10
                     },
                     "order": {
                         "type": "string",
-                        "description": "Sort order: date, rating, relevance, title, viewCount",
+                        "description": "The criteria to sort search results by. Options: 'date' (newest), 'rating' (highest rated), 'relevance' (default), 'title' (alphabetical), 'viewCount' (most viewed).",
                         "enum": ["date", "rating", "relevance", "title", "viewCount"],
                         "default": "relevance"
                     }
@@ -256,13 +279,17 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="get_channel_info",
-            description="Get information about a YouTube channel",
+            description=(
+                "Retrieves detailed information about a YouTube channel.\n"
+                "Use this tool to get channel statistics (subscribers, total views, video count), description, branding details, and uploads playlist ID.\n"
+                "This is useful for analyzing a creator's profile and reach."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
                     "channel_id": {
                         "type": "string",
-                        "description": "YouTube channel ID or channel URL"
+                        "description": "The YouTube channel ID (e.g., 'UC_x5XG1OV2P6uZZ5FSM9Ttw') or channel URL (e.g., 'https://youtube.com/channel/...'). handles @username URLs if possible."
                     }
                 },
                 "required": ["channel_id"]
@@ -270,22 +297,27 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="get_channel_videos",
-            description="Get recent videos from a YouTube channel",
+            description=(
+                "Retrieves a list of videos uploaded by a specific YouTube channel.\n"
+                "Use this tool to see a channel's recent content or most popular videos.\n"
+                "Returns video details including ID, title, description, and publication date.\n"
+                "Supports sorting by date (default), view count, and rating."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
                     "channel_id": {
                         "type": "string",
-                        "description": "YouTube channel ID"
+                        "description": "The YouTube channel ID."
                     },
                     "max_results": {
                         "type": "number",
-                        "description": "Maximum number of videos (1-50)",
+                        "description": "The maximum number of videos to retrieve. Accepts values between 1 and 50. Defaults to 10.",
                         "default": 10
                     },
                     "order": {
                         "type": "string",
-                        "description": "Sort order: date, rating, relevance, title, videoCount, viewCount",
+                        "description": "The order to sort videos by. Options: 'date' (newest), 'rating', 'relevance', 'title', 'videoCount' (for channels), 'viewCount'. Defaults to 'date'.",
                         "enum": ["date", "rating", "relevance", "title", "videoCount", "viewCount"],
                         "default": "date"
                     }
@@ -295,23 +327,28 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="get_trending_videos",
-            description="Get trending videos in a specific region",
+            description=(
+                "Retrieves a list of currently trending videos in a specific region.\n"
+                "Use this tool to discover popular content and current trends on YouTube.\n"
+                "Can be filtered by specific video categories (e.g., Music, Gaming, News).\n"
+                "Returns video metadata and statistics for the top trending videos."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
                     "region_code": {
                         "type": "string",
-                        "description": "ISO 3166-1 alpha-2 country code (e.g., 'US', 'GB', 'IN')",
+                        "description": "The ISO 3166-1 alpha-2 country code for the region (e.g., 'US', 'GB', 'IN', 'JP'). Defaults to 'US'.",
                         "default": "US"
                     },
                     "category_id": {
                         "type": "string",
-                        "description": "Video category ID (e.g., '10' for Music, '20' for Gaming)",
+                        "description": "The video category ID to filter by (e.g., '10' for Music, '20' for Gaming). Defaults to '0' (all categories).",
                         "default": "0"
                     },
                     "max_results": {
                         "type": "number",
-                        "description": "Maximum number of results (1-50)",
+                        "description": "The maximum number of trending videos to retrieve. Accepts values between 1 and 50. Defaults to 10.",
                         "default": 10
                     }
                 },
@@ -320,17 +357,21 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="get_playlist_info",
-            description="Get information about a YouTube playlist and its videos",
+            description=(
+                "Retrieves information about a YouTube playlist and the videos within it.\n"
+                "Use this tool to get details about a playlist (title, description, channel) and a list of its video items.\n"
+                "Useful for processing curated lists of videos or series."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
                     "playlist_id": {
                         "type": "string",
-                        "description": "YouTube playlist ID"
+                        "description": "The YouTube playlist ID."
                     },
                     "max_results": {
                         "type": "number",
-                        "description": "Maximum number of videos to retrieve (1-50)",
+                        "description": "The maximum number of playlist items to retrieve. Accepts values between 1 and 50. Defaults to 20.",
                         "default": 20
                     }
                 },
@@ -339,47 +380,66 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="get_video_analytics",
-            description="Get current video metrics with engagement analysis (views, likes, comments, engagement rates).",
+            description=(
+                "Calculates detailed engagement metrics for a specific video.\n"
+                "Use this tool to get a deeper analysis than standard metadata. Returns views, likes, comments, "
+                "plus calculated 'like rate' (likes/views) and 'comment rate' (comments/views).\n"
+                "Also provides a weighted 'engagement score' to evaluate overall performance."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "video_id": {"type": "string", "description": "YouTube video ID or URL"}
+                    "video_id": {"type": "string", "description": "The YouTube video ID or URL."}
                 },
                 "required": ["video_id"]
             }
         ),
         types.Tool(
             name="analyze_video_engagement",
-            description="Analyze a video's engagement quality based on like-to-view and comment-to-view ratios.",
+            description=(
+                "Analyzes the quality of audience engagement for a video.\n"
+                "Use this tool to interpret engagement metrics. It classifies engagement as 'Excellent', 'Good', "
+                "'Average', etc., based on industry benchmarks for like-to-view and comment-to-view ratios.\n"
+                "Returns a qualitative interpretation of quantitative metrics."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "video_id": {"type": "string", "description": "YouTube video ID or URL"}
+                    "video_id": {"type": "string", "description": "The YouTube video ID or URL."}
                 },
                 "required": ["video_id"]
             }
         ),
         types.Tool(
             name="get_video_performance_score",
-            description="Calculate a performance score for a video based on current engagement metrics.",
+            description=(
+                "Calculates a comprehensive performance score (0-100) and letter grade (A-F) for a video.\n"
+                "Use this tool for a high-level summary of how well a video is performing relative to engagement benchmarks.\n"
+                "Returns the score, grade, summary text, and the underlying metrics used for calculation."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "video_id": {"type": "string", "description": "YouTube video ID or URL"}
+                    "video_id": {"type": "string", "description": "The YouTube video ID or URL."}
                 },
                 "required": ["video_id"]
             }
         ),
         types.Tool(
             name="compare_videos",
-            description="Compare multiple videos side-by-side with metrics and engagement analysis.",
+            description=(
+                "Compares up to 10 videos side-by-side on key performance metrics.\n"
+                "Use this tool to benchmark videos against each other. It ranks them by engagement score and highlights "
+                "the best performer in views, engagement, and like rate.\n"
+                "Returns a comparative table and highlights."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
                     "video_ids": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "List of video IDs to compare (2-10 videos)"
+                        "description": "A list of video IDs or URLs to compare (minimum 2, maximum 10)."
                     }
                 },
                 "required": ["video_ids"]
@@ -387,25 +447,34 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="analyze_video_potential",
-            description="Analyze a video's content quality signals and audience resonance based on current metrics.",
+            description=(
+                "Analyzes a video's potential and content quality signals.\n"
+                "Use this tool to identify strengths (e.g., 'Viral reach', 'High retention signals') and weaknesses "
+                "(e.g., 'Low interaction').\n"
+                "Returns a list of positive quality signals, areas for improvement, and an overall assessment."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "video_id": {"type": "string", "description": "YouTube video ID or URL"}
+                    "video_id": {"type": "string", "description": "The YouTube video ID or URL."}
                 },
                 "required": ["video_id"]
             }
         ),
         types.Tool(
             name="compare_channels",
-            description="Compare multiple YouTube channels side-by-side with detailed metrics.",
+            description=(
+                "Compares up to 5 YouTube channels side-by-side.\n"
+                "Use this tool to benchmark creators. Comparies subscribers, total views, video count, and average views per video.\n"
+                "Returns a dataset suitable for competitive analysis."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
                     "channel_ids": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "List of YouTube channel IDs to compare (2-5 channels)"
+                        "description": "A list of channel IDs to compare (minimum 2, maximum 5)."
                     }
                 },
                 "required": ["channel_ids"]
@@ -413,26 +482,35 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="analyze_content_strategy",
-            description="Analyze content strategy of a channel (posting frequency, video types, engagement patterns).",
+            description=(
+                "Analyzes a channel's posting habits and content strategy.\n"
+                "Use this tool to determine how frequently a channel uploads (e.g., 'Daily', 'Weekly') and consistency.\n"
+                "Returns calculated metrics on posting frequency, estimated videos per month, and average views."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "channel_id": {"type": "string", "description": "YouTube channel ID"}
+                    "channel_id": {"type": "string", "description": "The YouTube channel ID."}
                 },
                 "required": ["channel_id"]
             }
         ),
         types.Tool(
             name="benchmark_performance",
-            description="Benchmark a channel's performance against competitors.",
+            description=(
+                "Benchmarks a target channel against a set of competitors.\n"
+                "Use this tool to see where a channel stands in its niche. Ranks the target channel by subscribers "
+                "and engagement against the provided competitors.\n"
+                "Returns the target's rank and comparative data."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "target_channel_id": {"type": "string", "description": "Target channel ID to benchmark"},
+                    "target_channel_id": {"type": "string", "description": "The ID of the channel to benchmark."},
                     "competitor_channel_ids": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "List of competitor channel IDs"
+                        "description": "A list of competitor channel IDs to compare against."
                     }
                 },
                 "required": ["target_channel_id", "competitor_channel_ids"]
@@ -440,15 +518,19 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="identify_competitive_advantages",
-            description="Identify competitive advantages and weaknesses of a channel compared to others.",
+            description=(
+                "Identifies relative strengths and weaknesses of a channel compared to competitors.\n"
+                "Use this tool to find unique selling points (e.g., 'Strong view-to-subscriber ratio') or gaps.\n"
+                "Returns a list of advantages and weaknesses based on statistical comparison."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "channel_id": {"type": "string", "description": "YouTube channel ID"},
+                    "channel_id": {"type": "string", "description": "The ID of the channel to analyze."},
                     "comparison_channel_ids": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "List of channel IDs to compare against"
+                        "description": "A list of channel IDs to compare against."
                     }
                 },
                 "required": ["channel_id", "comparison_channel_ids"]
@@ -456,14 +538,19 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="track_market_share",
-            description="Track market share and audience distribution across multiple channels.",
+            description=(
+                "Calculates the 'market share' of viewership and subscribers among a group of channels.\n"
+                "Use this tool to see dominance within a specific niche. Shows what percentage of total views/subs "
+                "each channel owns within the provided group.\n"
+                "Returns percentage shares for each channel."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
                     "channel_ids": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "List of YouTube channel IDs"
+                        "description": "A list of YouTube channel IDs representing the 'market'."
                     }
                 },
                 "required": ["channel_ids"]
@@ -472,19 +559,24 @@ async def handle_list_tools() -> list[types.Tool]:
         # --- Report Generation Tools ---
         types.Tool(
             name="generate_channel_report",
-            description="Generate a comprehensive performance report for a YouTube channel including metrics, top videos, and engagement analysis.",
+            description=(
+                "Generates a comprehensive performance report for a YouTube channel over a specific period.\n"
+                "Use this tool to create a summary of channel activity. Includes aggregate metrics (total views, likes), "
+                "top performing videos, and individual video details for the period.\n"
+                "Returns a structured report suitable for presentation or analysis."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "channel_id": {"type": "string", "description": "YouTube channel ID"},
+                    "channel_id": {"type": "string", "description": "The YouTube channel ID."},
                     "period_days": {
                         "type": "number",
-                        "description": "Report period in days (7, 30, or 90)",
+                        "description": "The number of days to look back (e.g., 7 for weekly, 30 for monthly). Defaults to 7.",
                         "default": 7
                     },
                     "include_videos": {
                         "type": "boolean",
-                        "description": "Include individual video details",
+                        "description": "Whether to include detailed data for each video in the report. Defaults to True.",
                         "default": True
                     }
                 },
@@ -493,11 +585,16 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="generate_video_report",
-            description="Generate a detailed performance report for a specific YouTube video including engagement analysis and metrics.",
+            description=(
+                "Generates a detailed deep-dive report for a specific video.\n"
+                "Use this tool for an in-depth look at a single video. Includes all metadata, engagement analysis, "
+                "performance scoring, quality signals, and improvement suggestions.\n"
+                "Returns a complete profile of the video's performance."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "video_id": {"type": "string", "description": "YouTube video ID or URL"}
+                    "video_id": {"type": "string", "description": "The YouTube video ID or URL."}
                 },
                 "required": ["video_id"]
             }
@@ -505,39 +602,51 @@ async def handle_list_tools() -> list[types.Tool]:
         # --- New Tools ---
         types.Tool(
             name="get_related_videos",
-            description="Get videos related to a specific YouTube video",
+            description=(
+                "Retrieves a list of videos matching or related to a specific video.\n"
+                "Use this tool to find what YouTube recommends next to a given video, useful for understanding content clusters.\n"
+                "Returns a list of related video summaries."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "video_id": {"type": "string", "description": "YouTube video ID or URL"},
-                    "max_results": {"type": "number", "default": 10, "description": "Max results (1-50)"}
+                    "video_id": {"type": "string", "description": "The YouTube video ID or URL."},
+                    "max_results": {"type": "number", "default": 10, "description": "Maximum number of related videos to return (1-50)."}
                 },
                 "required": ["video_id"]
             }
         ),
         types.Tool(
             name="get_channel_playlists",
-            description="List playlists from a YouTube channel",
+            description=(
+                "Retrieves a list of playlists created by a specific channel.\n"
+                "Use this tool to explore how a channel organizes its content.\n"
+                "Returns playlist details including ID, title, and description."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "channel_id": {"type": "string", "description": "YouTube channel ID"},
-                    "max_results": {"type": "number", "default": 10, "description": "Max results (1-50)"}
+                    "channel_id": {"type": "string", "description": "The YouTube channel ID."},
+                    "max_results": {"type": "number", "default": 10, "description": "Maximum number of playlists to return (1-50)."}
                 },
                 "required": ["channel_id"]
             }
         ),
         types.Tool(
             name="search_channels",
-            description="Search for YouTube channels by keyword",
+            description=(
+                "Searches for YouTube channels matching a query.\n"
+                "Use this tool to find creators by name or topic.\n"
+                "Returns a list of matching channels with subscriber counts and video counts."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Search query"},
-                    "max_results": {"type": "number", "default": 10, "description": "Max results (1-50)"},
+                    "query": {"type": "string", "description": "The search query (channel name or topic)."},
+                    "max_results": {"type": "number", "default": 10, "description": "Maximum number of results (1-50)."},
                     "order": {
                         "type": "string", 
-                        "description": "Sort order: date, rating, relevance, title, videoCount, viewCount",
+                        "description": "Sort order: 'date', 'rating', 'relevance', 'title', 'videoCount', 'viewCount'. Defaults to 'relevance'.",
                         "enum": ["date", "rating", "relevance", "title", "videoCount", "viewCount"],
                         "default": "relevance"
                     }
@@ -547,69 +656,93 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="get_video_categories",
-            description="Get list of video categories for a region",
+            description=(
+                "Retrieves the list of video categories available in a specific region.\n"
+                "Use this tool to get valid Category IDs for filtering searches or trending videos.\n"
+                "Returns a map of Category IDs to Category Names."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "region_code": {"type": "string", "default": "US", "description": "ISO 3166-1 alpha-2 country code"}
+                    "region_code": {"type": "string", "default": "US", "description": "ISO 3166-1 alpha-2 country code (e.g., 'US', 'GB')."}
                 },
                 "required": []
             }
         ),
         types.Tool(
             name="get_comment_replies",
-            description="Get replies to a specific comment",
+            description=(
+                "Retrieves replies to a specific top-level comment.\n"
+                "Use this tool to dive deeper into a specific conversation thread in the comments.\n"
+                "Returns a list of reply comments."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "comment_id": {"type": "string", "description": "Parent comment ID"},
-                    "max_results": {"type": "number", "default": 20, "description": "Max replies(1-100)"}
+                    "comment_id": {"type": "string", "description": "The parent comment ID."},
+                    "max_results": {"type": "number", "default": 20, "description": "Maximum number of replies to return (1-100)."}
                 },
                 "required": ["comment_id"]
             }
         ),
         types.Tool(
             name="get_live_stream_info",
-            description="Get status and details of a live stream video",
+            description=(
+                "Retrieves real-time information about a live stream.\n"
+                "Use this tool to check if a video is currently live, scheduled, or ended, and get live viewer counts.\n"
+                "Returns status, scheduled start/end times, and concurrent viewer count if live."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "video_id": {"type": "string", "description": "YouTube video ID or URL"}
+                    "video_id": {"type": "string", "description": "The YouTube video ID or URL of the live stream."}
                 },
                 "required": ["video_id"]
             }
         ),
         types.Tool(
             name="calculate_engagement_rate",
-            description="Calculate engagement metrics for a video",
+            description=(
+                "Calculates raw engagement rates for a video.\n"
+                "Use this tool to get the mathematical ratios of likes/views and comments/views without qualitative analysis.\n"
+                "Returns percentages."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "video_id": {"type": "string", "description": "YouTube video ID or URL"}
+                    "video_id": {"type": "string", "description": "The YouTube video ID or URL."}
                 },
                 "required": ["video_id"]
             }
         ),
         types.Tool(
             name="get_most_liked_video",
-            description="Find the most liked video for a channel or search query",
+            description=(
+                "Finds the most liked video for a channel or search query.\n"
+                "Use this tool to identify the most popular content by audience approval (likes).\n"
+                "Returns the single video with the highest like count from the search results."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Channel name or search query"},
-                    "channel_id": {"type": "string", "description": "Optional: Specific YouTube channel ID"}
+                    "query": {"type": "string", "description": "Search query or channel name."},
+                    "channel_id": {"type": "string", "description": "Optional: Specific YouTube channel ID to restrict search to."}
                 },
                 "required": ["query"]
             }
         ),
         types.Tool(
             name="get_most_viewed_video",
-            description="Find the most viewed video for a channel or search query",
+            description=(
+                "Finds the most viewed video for a channel or search query.\n"
+                "Use this tool to identify the most viral or widely watched content.\n"
+                "Returns the single video with the highest view count from the search results."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Channel name or search query"},
-                    "channel_id": {"type": "string", "description": "Optional: Specific YouTube channel ID"}
+                    "query": {"type": "string", "description": "Search query or channel name."},
+                    "channel_id": {"type": "string", "description": "Optional: Specific YouTube channel ID to restrict search to."}
                 },
                 "required": ["query"]
             }
@@ -1566,13 +1699,12 @@ async def handle_call_tool(
             
             like_rate = (likes / views * 100) if views > 0 else 0
             comment_rate = (comments / views * 100) if views > 0 else 0
-            engagement_score = (like_rate * 0.7) + (comment_rate * 0.3 * 10)
             
-            # Performance rating
-            rating = _calculate_performance_rating(like_rate, comment_rate)
+            # Use improved engagement score formula
+            score = (like_rate * 20) + (comment_rate * 100)
+            score = min(score, 100)
+            score = round(score, 1)
             
-            # Performance score
-            score = min(engagement_score * 10, 100)
             if score >= 80:
                 grade = "A"
             elif score >= 60:
@@ -1584,25 +1716,30 @@ async def handle_call_tool(
             else:
                 grade = "F"
             
+            # Recalculate rating for consistency
+            rating = _calculate_performance_rating(like_rate, comment_rate)
+            
             # Quality signals
             signals = []
             concerns = []
             
-            if like_rate >= 5:
+            if like_rate >= 4:
                 signals.append("Excellent like-to-view ratio")
-            elif like_rate < 1:
+            elif like_rate >= 2:
+                signals.append("Strong audience resonance (Good like rate)")
+            elif like_rate < 0.5:
                 concerns.append("Low like-to-view ratio")
             
-            if comment_rate >= 0.5:
+            if comment_rate >= 0.2:
                 signals.append("High audience engagement in comments")
-            elif comment_rate < 0.05:
+            elif comment_rate < 0.01:
                 concerns.append("Low comment engagement")
             
-            if views > 1000000:
+            if views > 500000:
                 signals.append("Viral reach achieved")
-            elif views > 100000:
+            elif views > 50000:
                 signals.append("Strong video reach")
-            elif views < 1000:
+            elif views < 500:
                 concerns.append("Limited reach")
             
             report = {
@@ -1628,7 +1765,7 @@ async def handle_call_tool(
                     "comments_formatted": format_number(comments),
                     "like_rate": round(like_rate, 2),
                     "comment_rate": round(comment_rate, 3),
-                    "engagement_score": round(engagement_score, 2)
+                    "engagement_score": round(score, 2)
                 },
                 "performance": {
                     "score": round(score, 1),

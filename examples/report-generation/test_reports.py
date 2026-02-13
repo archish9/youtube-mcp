@@ -5,6 +5,7 @@ Test each report generation tool individually with command-line arguments
 Usage:
     python test_reports.py channel [channel_id] [period_days]
     python test_reports.py video [video_id]
+    python test_reports.py query [search_query]
     python test_reports.py all
 """
 
@@ -174,6 +175,50 @@ async def test_video_report(video_id=DEFAULT_VIDEO_ID):
             for concern in analysis['areas_for_improvement']:
                 print(f"  - {concern}")
 
+async def test_query_report(query="Keka HR"):
+    """Test find most liked + generate report flow"""
+    print("=" * 70)
+    print(f"Testing Query Flow: 'Generate report for {query}'s most liked video'")
+    print("=" * 70)
+
+    async with stdio_client(SERVER_PARAMS) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            
+            # 1. Find most liked video
+            print(f"\nStep 1: Finding most liked video for '{query}'...")
+            result = await session.call_tool(
+                "get_most_liked_video", 
+                arguments={"query": query}
+            )
+            video_data = json.loads(result.content[0].text)
+            video_id = video_data["video_id"]
+            title = video_data["title"]
+            likes = video_data["likes"]
+            
+            print(f"Found: '{title}' ({video_id}) with {likes} likes.")
+            
+            # 2. Generate report
+            print(f"\nStep 2: Generating detailed report for video ID {video_id}...")
+            result = await session.call_tool(
+                "generate_video_report", 
+                arguments={"video_id": video_id}
+            )
+            
+            report = json.loads(result.content[0].text)
+            
+            print(f"\n{'='*60}")
+            print(f"MOST LIKED VIDEO REPORT: {query}")
+            print(f"{'='*60}")
+            
+            video = report['video']
+            print(f"Title: {video['title']}")
+            print(f"Likes: {report['metrics']['likes_formatted']}")
+            print(f"Views: {report['metrics']['views_formatted']}")
+            print(f"Grade: {report['performance']['grade']}")
+            print(f"URL: {video['url']}")
+            print(f"\nSummary: {report['analysis']['overall_assessment']} performance.")
+
 
 async def run_all_tests():
     """Run all tests sequentially"""
@@ -205,6 +250,9 @@ if __name__ == "__main__":
     elif command == "video":
         video_id = sys.argv[2] if len(sys.argv) > 2 else DEFAULT_VIDEO_ID
         asyncio.run(test_video_report(video_id))
+    elif command == "query":
+        query = sys.argv[2] if len(sys.argv) > 2 else "Keka HR"
+        asyncio.run(test_query_report(query))
     elif command == "all":
         asyncio.run(run_all_tests())
     else:
@@ -212,6 +260,7 @@ if __name__ == "__main__":
         print("\nUsage:")
         print("  python test_reports.py channel [channel_id] [period_days]")
         print("  python test_reports.py video [video_id]")
+        print("  python test_reports.py query [search_query]")
         print("  python test_reports.py all")
         print("\nExamples:")
         print("  python test_reports.py channel UCX6OQ3DkcsbYNE6H8uQQuVA 30")
